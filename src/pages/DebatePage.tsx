@@ -64,33 +64,41 @@ const DebatePage = () => {
     const fromRandom = localStorage.getItem('fromRandomQueue') === 'true';
     setIsFromRandomQueue(fromRandom);
 
-    // جلب إعدادات المناظرة
-    const settings = localStorage.getItem('currentDebate');
-    if (settings) {
-      const debateData = JSON.parse(settings);
-      setDebateSettings(debateData);
+    // للمناظرات الخاصة: التحقق من الكود
+    if (code && code !== 'random') {
+      // البحث عن المناظرة بالكود
+      const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
+      const foundDebate = existingDebates.find((debate: DebateSettings) => debate.code === code);
+      
+      if (!foundDebate) {
+        alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
+        navigate('/dashboard');
+        return;
+      }
 
       // منع دخول المستخدم من طابور عشوائي إلى غرفة خاصة
-      if (debateData.isPrivate && fromRandom) {
+      if (foundDebate.isPrivate && fromRandom) {
         alert('لا يمكنك دخول مناظرة خاصة من الطابور العشوائي');
         navigate('/dashboard');
         return;
       }
 
-      // للمناظرات الخاصة: التحقق من الكود
-      if (debateData.isPrivate && code !== debateData.code) {
-        alert('كود المناظرة غير صحيح');
-        navigate('/dashboard');
-        return;
+      setDebateSettings(foundDebate);
+    } else {
+      // جلب إعدادات المناظرة العشوائية
+      const settings = localStorage.getItem('currentDebate');
+      if (settings) {
+        const debateData = JSON.parse(settings);
+        setDebateSettings(debateData);
       }
     }
 
     // محاكاة دخول المناظر
     const timer = setTimeout(() => {
-      if (code !== 'random') {
+      if (user) {
         const mockOpponent = {
           username: 'المناظر_المجهول',
-          religion: JSON.parse(userData || '{}').religion === 'سني' ? 'شيعي' : 'سني'
+          religion: user.religion === 'سني' ? 'شيعي' : 'سني'
         };
         setOpponent(mockOpponent);
         setCurrentPhase('preparation');
