@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Users, MessageSquare, Settings } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Settings, SkipForward } from 'lucide-react';
 import DebateTimer from '@/components/DebateTimer';
 import MediaControls from '@/components/MediaControls';
 
@@ -12,6 +13,8 @@ interface DebateSettings {
   code: string;
   roundTime: number;
   roundCount: number;
+  preparationTime: number;
+  finalTime: number;
   isPrivate: boolean;
   creator: string;
   creatorReligion: string;
@@ -41,8 +44,7 @@ const DebatePage = () => {
   const [currentPhase, setCurrentPhase] = useState<DebatePhase>('waiting');
   const [currentRound, setCurrentRound] = useState(1);
   const [activePlayer, setActivePlayer] = useState<'user' | 'opponent' | 'both' | 'none'>('none');
-  const [preparationTime, setPreparationTime] = useState(60); // 60 ثانية للتحضير
-  const [finalDiscussionTime, setFinalDiscussionTime] = useState(300); // 5 دقائق للنقاش النهائي
+  const [isFromRandomQueue, setIsFromRandomQueue] = useState(false);
   
   // التعليقات المباشرة
   const [comments, setComments] = useState<Comment[]>([]);
@@ -58,16 +60,34 @@ const DebatePage = () => {
       return;
     }
 
+    // التحقق من أن المستخدم لم يأت من طابور عشوائي إذا كانت المناظرة خاصة
+    const fromRandom = localStorage.getItem('fromRandomQueue') === 'true';
+    setIsFromRandomQueue(fromRandom);
+
     // جلب إعدادات المناظرة
     const settings = localStorage.getItem('currentDebate');
     if (settings) {
-      setDebateSettings(JSON.parse(settings));
+      const debateData = JSON.parse(settings);
+      setDebateSettings(debateData);
+
+      // منع دخول المستخدم من طابور عشوائي إلى غرفة خاصة
+      if (debateData.isPrivate && fromRandom) {
+        alert('لا يمكنك دخول مناظرة خاصة من الطابور العشوائي');
+        navigate('/dashboard');
+        return;
+      }
+
+      // للمناظرات الخاصة: التحقق من الكود
+      if (debateData.isPrivate && code !== debateData.code) {
+        alert('كود المناظرة غير صحيح');
+        navigate('/dashboard');
+        return;
+      }
     }
 
-    // محاكاة دخول المناظر (في التطبيق الحقيقي سيكون عبر WebSocket)
+    // محاكاة دخول المناظر
     const timer = setTimeout(() => {
       if (code !== 'random') {
-        // محاكاة دخول مناظر في الغرفة الخاصة
         const mockOpponent = {
           username: 'المناظر_المجهول',
           religion: JSON.parse(userData || '{}').religion === 'سني' ? 'شيعي' : 'سني'
@@ -85,7 +105,9 @@ const DebatePage = () => {
       case 'preparation':
         setCurrentPhase('debate');
         // اختيار عشوائي لمن يبدأ
-        setActivePlayer(Math.random() > 0.5 ? 'user' : 'opponent');
+        const randomStart = Math.random() > 0.5 ? 'user' : 'opponent';
+        setActivePlayer(randomStart);
+        console.log(`تم اختيار ${randomStart === 'user' ? 'المستخدم' : 'المناظر'} لبدء المناظرة`);
         break;
       case 'debate':
         if (currentRound < (debateSettings?.roundCount || 5)) {
@@ -101,6 +123,12 @@ const DebatePage = () => {
         setCurrentPhase('ended');
         setActivePlayer('none');
         break;
+    }
+  };
+
+  const handleSkipRound = () => {
+    if ((activePlayer === 'user' || activePlayer === 'opponent') && currentPhase === 'debate') {
+      handlePhaseTransition();
     }
   };
 
@@ -121,7 +149,7 @@ const DebatePage = () => {
     switch (currentPhase) {
       case 'preparation':
         return {
-          time: preparationTime,
+          time: (debateSettings?.preparationTime || 1) * 60,
           label: 'وقت التحضير',
           variant: 'warning' as const
         };
@@ -133,7 +161,7 @@ const DebatePage = () => {
         };
       case 'final':
         return {
-          time: finalDiscussionTime,
+          time: (debateSettings?.finalTime || 5) * 60,
           label: 'النقاش النهائي',
           variant: 'warning' as const
         };
@@ -230,6 +258,20 @@ const DebatePage = () => {
                       </div>
                     )}
 
+                    {/* زر إنهاء الجولة */}
+                    {currentPhase === 'debate' && (activePlayer === 'user') && (
+                      <div className="flex justify-center">
+                        <Button
+                          onClick={handleSkipRound}
+                          variant="outline"
+                          className="flex items-center space-x-reverse space-x-2"
+                        >
+                          <SkipForward className="h-4 w-4" />
+                          <span>إنهاء جولتي</span>
+                        </Button>
+                      </div>
+                    )}
+
                     {/* معلومات المناظرين */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className={`p-4 rounded-lg border-2 transition-colors ${
@@ -272,6 +314,7 @@ const DebatePage = () => {
                       <MediaControls
                         isMyTurn={activePlayer === 'user' || activePlayer === 'both'}
                         autoMicControl={currentPhase === 'debate'}
+                        currentPhase={currentPhase}
                       />
                     )}
                   </div>
@@ -328,12 +371,20 @@ const DebatePage = () => {
               </CardHeader>
               <CardContent className="space-y-2 text-xs">
                 <div className="flex justify-between">
+                  <span>وقت التحضير:</span>
+                  <span>{debateSettings.preparationTime} دقيقة</span>
+                </div>
+                <div className="flex justify-between">
                   <span>وقت الجولة:</span>
                   <span>{debateSettings.roundTime} دقيقة</span>
                 </div>
                 <div className="flex justify-between">
                   <span>عدد الجولات:</span>
                   <span>{debateSettings.roundCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>وقت النهاية:</span>
+                  <span>{debateSettings.finalTime} دقيقة</span>
                 </div>
                 <div className="flex justify-between">
                   <span>النوع:</span>

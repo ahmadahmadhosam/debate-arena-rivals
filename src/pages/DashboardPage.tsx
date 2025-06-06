@@ -18,8 +18,10 @@ interface User {
 const DashboardPage = () => {
   const [user, setUser] = useState<User | null>(null);
   const [debateCode, setDebateCode] = useState('');
+  const [preparationTime, setPreparationTime] = useState('1');
   const [roundTime, setRoundTime] = useState('5');
   const [roundCount, setRoundCount] = useState('5');
+  const [finalTime, setFinalTime] = useState('5');
   const [isDark, setIsDark] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const navigate = useNavigate();
@@ -35,6 +37,7 @@ const DashboardPage = () => {
 
   const logout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('fromRandomQueue');
     navigate('/');
   };
 
@@ -51,13 +54,16 @@ const DashboardPage = () => {
     const code = generateCode();
     const debateSettings = {
       code,
+      preparationTime: parseInt(preparationTime),
       roundTime: parseInt(roundTime),
       roundCount: parseInt(roundCount),
+      finalTime: parseInt(finalTime),
       isPrivate: true,
       creator: user?.username,
       creatorReligion: user?.religion
     };
     
+    localStorage.removeItem('fromRandomQueue');
     localStorage.setItem('currentDebate', JSON.stringify(debateSettings));
     navigate(`/debate/${code}`);
   };
@@ -68,19 +74,29 @@ const DashboardPage = () => {
       return;
     }
     
+    // التحقق من أن المستخدم لم يأت من طابور عشوائي
+    if (localStorage.getItem('fromRandomQueue') === 'true') {
+      alert('لا يمكنك دخول مناظرة خاصة بعد دخول الطابور العشوائي');
+      return;
+    }
+    
     navigate(`/debate/${debateCode.toUpperCase()}`);
   };
 
   const startRandomDebate = () => {
     const debateSettings = {
       code: 'RANDOM',
+      preparationTime: parseInt(preparationTime),
       roundTime: parseInt(roundTime),
       roundCount: parseInt(roundCount),
+      finalTime: parseInt(finalTime),
       isPrivate: false,
       creator: user?.username,
       creatorReligion: user?.religion
     };
     
+    // تسجيل أن المستخدم دخل الطابور العشوائي
+    localStorage.setItem('fromRandomQueue', 'true');
     localStorage.setItem('currentDebate', JSON.stringify(debateSettings));
     navigate('/debate/random');
   };
@@ -173,6 +189,22 @@ const DashboardPage = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <label className="text-sm font-medium">وقت التحضير (دقيقة):</label>
+              <Select value={preparationTime} onValueChange={setPreparationTime}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 60 }, (_, i) => i + 1).map((time) => (
+                    <SelectItem key={time} value={time.toString()}>
+                      {time} دقيقة
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <label className="text-sm font-medium">وقت كل جولة (دقيقة):</label>
               <Select value={roundTime} onValueChange={setRoundTime}>
                 <SelectTrigger className="mt-1">
@@ -198,6 +230,22 @@ const DashboardPage = () => {
                   {Array.from({ length: 10 }, (_, i) => i + 1).map((count) => (
                     <SelectItem key={count} value={count.toString()}>
                       {count} جولات
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">وقت النقاش النهائي (دقيقة):</label>
+              <Select value={finalTime} onValueChange={setFinalTime}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 60 }, (_, i) => i + 1).map((time) => (
+                    <SelectItem key={time} value={time.toString()}>
+                      {time} دقيقة
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -264,7 +312,11 @@ const DashboardPage = () => {
               </p>
 
               <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-sm">
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span>وقت التحضير:</span>
+                    <span className="font-medium">{preparationTime} دقيقة</span>
+                  </div>
                   <div className="flex justify-between">
                     <span>وقت الجولة:</span>
                     <span className="font-medium">{roundTime} دقيقة</span>
@@ -272,6 +324,10 @@ const DashboardPage = () => {
                   <div className="flex justify-between">
                     <span>عدد الجولات:</span>
                     <span className="font-medium">{roundCount} جولات</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>وقت النهاية:</span>
+                    <span className="font-medium">{finalTime} دقيقة</span>
                   </div>
                 </div>
               </div>
@@ -297,10 +353,13 @@ const DashboardPage = () => {
                 • لا يمكن للأشخاص من نفس المذهب دخول مناظرة واحدة
               </p>
               <p className="text-sm text-muted-foreground">
-                • كل مناظر له وقت محدد للحديث في كل جولة
+                • لا يمكن دخول مناظرة خاصة بعد دخول الطابور العشوائي
               </p>
               <p className="text-sm text-muted-foreground">
-                • يتم اختيار البادئ عشوائياً بعد انتهاء وقت البداية
+                • يتم اختيار البادئ عشوائياً بعد انتهاء وقت التحضير
+              </p>
+              <p className="text-sm text-muted-foreground">
+                • الميكروفون مفتوح في وقت التحضير والنهاية للجميع
               </p>
             </div>
           </CardContent>
