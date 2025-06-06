@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -30,6 +29,8 @@ interface Comment {
   timestamp: Date;
 }
 
+type DebatePhase = 'waiting' | 'preparation' | 'debate' | 'final' | 'ended';
+
 const DebatePage = () => {
   const { code } = useParams();
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ const DebatePage = () => {
   const [user, setUser] = useState<User | null>(null);
   const [debateSettings, setDebateSettings] = useState<DebateSettings | null>(null);
   const [opponent, setOpponent] = useState<User | null>(null);
-  const [currentPhase, setCurrentPhase] = useState<'waiting' | 'preparation' | 'debate' | 'final' | 'ended'>('waiting');
+  const [currentPhase, setCurrentPhase] = useState<DebatePhase>('waiting');
   const [currentRound, setCurrentRound] = useState(1);
   const [activePlayer, setActivePlayer] = useState<'user' | 'opponent' | 'both' | 'none'>('none');
   const [preparationTime, setPreparationTime] = useState(60); // 60 ثانية للتحضير
