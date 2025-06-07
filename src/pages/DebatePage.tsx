@@ -344,13 +344,11 @@ const DebatePage = () => {
                     </div>
 
                     {/* أدوات التحكم في الميديا */}
-                    {currentPhase !== 'waiting' && (
-                      <MediaControls
-                        isMyTurn={activePlayer === 'user' || activePlayer === 'both'}
-                        autoMicControl={currentPhase === 'debate'}
-                        currentPhase={currentPhase}
-                      />
-                    )}
+                    <MediaControls
+                      isMyTurn={activePlayer === 'user' || activePlayer === 'both'}
+                      autoMicControl={currentPhase === 'debate'}
+                      currentPhase={currentPhase}
+                    />
                   </div>
                 )}
               </CardContent>
