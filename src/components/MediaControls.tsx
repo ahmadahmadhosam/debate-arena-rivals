@@ -125,10 +125,9 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   }, [mediaStream]);
 
   const canToggleMic = !isAutoMicEnabled || 
-    (currentPhase !== 'debate') || 
-    isMyTurn || 
-    (currentPhase === 'preparation') || 
-    (currentPhase === 'final');
+    currentPhase === 'preparation' || 
+    currentPhase === 'final' ||
+    (currentPhase === 'debate' && isMyTurn);
 
   return (
     <div className="space-y-6">

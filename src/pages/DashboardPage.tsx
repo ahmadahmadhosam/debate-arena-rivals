@@ -38,6 +38,7 @@ const DashboardPage = () => {
   const logout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('fromRandomQueue');
+    localStorage.removeItem('currentDebate');
     navigate('/');
   };
 
@@ -59,9 +60,14 @@ const DashboardPage = () => {
       roundCount: parseInt(roundCount),
       finalTime: parseInt(finalTime),
       isPrivate: true,
-      creator: user?.username,
-      creatorReligion: user?.religion
+      creator: user?.username || 'مجهول',
+      creatorReligion: user?.religion || 'غير محدد'
     };
+    
+    // حفظ المناظرة في قائمة المناظرات الخاصة
+    const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
+    existingDebates.push(debateSettings);
+    localStorage.setItem('privateDebates', JSON.stringify(existingDebates));
     
     localStorage.removeItem('fromRandomQueue');
     localStorage.setItem('currentDebate', JSON.stringify(debateSettings));
@@ -79,7 +85,23 @@ const DashboardPage = () => {
       alert('لا يمكنك دخول مناظرة خاصة بعد دخول الطابور العشوائي');
       return;
     }
+
+    // التحقق من وجود المناظرة
+    const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
+    const foundDebate = existingDebates.find((debate: any) => debate.code === debateCode.toUpperCase());
     
+    if (!foundDebate) {
+      alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
+      return;
+    }
+    
+    // التحقق من المذهب
+    if (foundDebate.creatorReligion === user?.religion) {
+      alert('لا يمكن للأشخاص من نفس المذهب دخول مناظرة واحدة');
+      return;
+    }
+    
+    localStorage.removeItem('fromRandomQueue');
     navigate(`/debate/${debateCode.toUpperCase()}`);
   };
 
@@ -91,8 +113,8 @@ const DashboardPage = () => {
       roundCount: parseInt(roundCount),
       finalTime: parseInt(finalTime),
       isPrivate: false,
-      creator: user?.username,
-      creatorReligion: user?.religion
+      creator: user?.username || 'مجهول',
+      creatorReligion: user?.religion || 'غير محدد'
     };
     
     // تسجيل أن المستخدم دخل الطابور العشوائي
@@ -102,7 +124,11 @@ const DashboardPage = () => {
   };
 
   if (!user) {
-    return <div>جاري التحميل...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-islamic-gold-600"></div>
+      </div>
+    );
   }
 
   return (
@@ -360,6 +386,9 @@ const DashboardPage = () => {
               </p>
               <p className="text-sm text-muted-foreground">
                 • الميكروفون مفتوح في وقت التحضير والنهاية للجميع
+              </p>
+              <p className="text-sm text-muted-foreground">
+                • يمكن إنهاء الجولة مبكراً فقط للشخص الذي عليه الدور
               </p>
             </div>
           </CardContent>

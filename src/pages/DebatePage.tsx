@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Users, MessageSquare, Settings, SkipForward } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Settings, SkipForward, Clock } from 'lucide-react';
 import DebateTimer from '@/components/DebateTimer';
 import MediaControls from '@/components/MediaControls';
 
@@ -45,6 +45,7 @@ const DebatePage = () => {
   const [currentRound, setCurrentRound] = useState(1);
   const [activePlayer, setActivePlayer] = useState<'user' | 'opponent' | 'both' | 'none'>('none');
   const [isFromRandomQueue, setIsFromRandomQueue] = useState(false);
+  const [waitingForOpponent, setWaitingForOpponent] = useState(true);
   
   // التعليقات المباشرة
   const [comments, setComments] = useState<Comment[]>([]);
@@ -66,47 +67,58 @@ const DebatePage = () => {
 
     // للمناظرات الخاصة: التحقق من الكود
     if (code && code !== 'random') {
-      // البحث عن المناظرة بالكود
-      const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
-      const foundDebate = existingDebates.find((debate: DebateSettings) => debate.code === code);
-      
-      if (!foundDebate) {
-        alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
-        navigate('/dashboard');
-        return;
-      }
-
-      // منع دخول المستخدم من طابور عشوائي إلى غرفة خاصة
-      if (foundDebate.isPrivate && fromRandom) {
-        alert('لا يمكنك دخول مناظرة خاصة من الطابور العشوائي');
-        navigate('/dashboard');
-        return;
-      }
-
-      setDebateSettings(foundDebate);
+      handlePrivateDebate(code, fromRandom);
     } else {
-      // جلب إعدادات المناظرة العشوائية
-      const settings = localStorage.getItem('currentDebate');
-      if (settings) {
-        const debateData = JSON.parse(settings);
-        setDebateSettings(debateData);
-      }
+      handleRandomDebate();
     }
 
     // محاكاة دخول المناظر
     const timer = setTimeout(() => {
-      if (user) {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const userObj = JSON.parse(userData);
         const mockOpponent = {
           username: 'المناظر_المجهول',
-          religion: user.religion === 'سني' ? 'شيعي' : 'سني'
+          religion: userObj.religion === 'سني' ? 'شيعي' : 'سني'
         };
         setOpponent(mockOpponent);
+        setWaitingForOpponent(false);
         setCurrentPhase('preparation');
       }
     }, 3000);
 
     return () => clearTimeout(timer);
   }, [code, navigate]);
+
+  const handlePrivateDebate = (debateCode: string, fromRandom: boolean) => {
+    // البحث عن المناظرة بالكود
+    const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
+    const foundDebate = existingDebates.find((debate: DebateSettings) => debate.code === debateCode);
+    
+    if (!foundDebate) {
+      alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
+      navigate('/dashboard');
+      return;
+    }
+
+    // منع دخول المستخدم من طابور عشوائي إلى غرفة خاصة
+    if (foundDebate.isPrivate && fromRandom) {
+      alert('لا يمكنك دخول مناظرة خاصة من الطابور العشوائي');
+      navigate('/dashboard');
+      return;
+    }
+
+    setDebateSettings(foundDebate);
+  };
+
+  const handleRandomDebate = () => {
+    // جلب إعدادات المناظرة العشوائية
+    const settings = localStorage.getItem('currentDebate');
+    if (settings) {
+      const debateData = JSON.parse(settings);
+      setDebateSettings(debateData);
+    }
+  };
 
   const handlePhaseTransition = () => {
     switch (currentPhase) {
@@ -179,7 +191,14 @@ const DebatePage = () => {
   };
 
   if (!user || !debateSettings) {
-    return <div>جاري التحميل...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-islamic-gold-600 mx-auto"></div>
+          <p>جاري التحميل...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -240,13 +259,21 @@ const DebatePage = () => {
                       <Users className="h-16 w-16 mx-auto text-muted-foreground" />
                     </div>
                     <p className="text-muted-foreground">
-                      {opponent ? 'جاري الاتصال...' : 'لم يدخل أحد بعد'}
+                      {waitingForOpponent ? 'لم يدخل أحد بعد' : 'جاري الاتصال...'}
                     </p>
                     {debateSettings.isPrivate && (
                       <div className="bg-muted/50 p-4 rounded-lg">
                         <p className="text-sm">شارك هذا الكود مع المناظر:</p>
                         <p className="text-2xl font-mono font-bold text-islamic-gold-600">
                           {debateSettings.code}
+                        </p>
+                      </div>
+                    )}
+                    {!debateSettings.isPrivate && (
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <Clock className="h-8 w-8 mx-auto text-blue-600 mb-2" />
+                        <p className="text-sm text-blue-700">
+                          البحث عن مناظر من المذهب المختلف...
                         </p>
                       </div>
                     )}
