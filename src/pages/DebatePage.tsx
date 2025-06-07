@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,6 @@ const DebatePage = () => {
   const [newComment, setNewComment] = useState('');
 
   useEffect(() => {
-    // جلب بيانات المستخدم
     const userData = localStorage.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
@@ -60,7 +58,6 @@ const DebatePage = () => {
       handleRandomDebate();
     }
 
-    // التحقق من دخول مناظر جديد كل 3 ثوانٍ
     const checkInterval = setInterval(() => {
       if (code && code !== 'random' && currentPhase === 'waiting') {
         checkForOpponent(code);
@@ -71,13 +68,18 @@ const DebatePage = () => {
   }, [code, navigate, currentPhase]);
 
   const handlePrivateDebate = (debateCode: string, fromRandom: boolean) => {
+    console.log(`التعامل مع المناظرة الخاصة: ${debateCode}`);
+    
     const debate = debateManager.getDebate(debateCode);
     
     if (!debate) {
+      console.log('المناظرة غير موجودة');
       alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
       navigate('/dashboard');
       return;
     }
+
+    console.log('تم العثور على المناظرة:', debate);
 
     if (fromRandom) {
       alert('لا يمكنك دخول مناظرة خاصة من الطابور العشوائي');
@@ -88,20 +90,17 @@ const DebatePage = () => {
     setDebateSession(debate);
     debateManager.setCurrentSession(debate);
 
-    // التحقق من وجود مناظر
     if (debate.opponent) {
       const userData = localStorage.getItem('user');
       if (userData) {
         const userObj = JSON.parse(userData);
         
         if (debate.creator === userObj.username) {
-          // المستخدم الحالي هو المنشئ
           setOpponent({
             username: debate.opponent,
             religion: debate.opponentReligion || 'غير محدد'
           });
         } else {
-          // المستخدم الحالي هو المناظر
           setOpponent({
             username: debate.creator,
             religion: debate.creatorReligion
@@ -109,9 +108,12 @@ const DebatePage = () => {
         }
         
         setCurrentPhase('preparation');
+        console.log('بدء مرحلة التحضير');
       }
     } else {
-      setWaitingMessage(`في انتظار مناظر من المذهب ${debate.creatorReligion === 'سني' ? 'الشيعي' : 'السني'}`);
+      const oppositeReligion = debate.creatorReligion === 'سني' ? 'الشيعي' : 'السني';
+      setWaitingMessage(`في انتظار مناظر من المذهب ${oppositeReligion}`);
+      console.log('في انتظار مناظر');
     }
   };
 
@@ -140,6 +142,8 @@ const DebatePage = () => {
 
   const checkForOpponent = (debateCode: string) => {
     const debate = debateManager.getDebate(debateCode);
+    console.log(`التحقق من وجود مناظر للكود: ${debateCode}`, debate);
+    
     if (debate && debate.opponent && !opponent) {
       const userData = localStorage.getItem('user');
       if (userData) {
@@ -159,6 +163,7 @@ const DebatePage = () => {
         
         setCurrentPhase('preparation');
         setWaitingMessage('');
+        console.log('تم العثور على مناظر، بدء التحضير');
       }
     }
   };

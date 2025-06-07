@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Mic, MicOff, Camera, CameraOff } from 'lucide-react';
@@ -24,22 +24,20 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   const [isAutoMicEnabled, setIsAutoMicEnabled] = useState(true);
   const [isAutoCameraEnabled, setIsAutoCameraEnabled] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [hasPermissions, setHasPermissions] = useState(false);
+  const [permissionError, setPermissionError] = useState('');
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // التحكم التلقائي في الميكروفون
   useEffect(() => {
     if (isAutoMicEnabled) {
-      // في الأوقات المفتوحة (التحضير والنهاية) يكون الميكروفون مفتوح دائماً
       if (currentPhase === 'preparation' || currentPhase === 'final') {
         setIsMicEnabled(true);
         onMicToggle?.(true);
-      } 
-      // في جولات المناظرة يعتمد على الدور
-      else if (currentPhase === 'debate') {
+      } else if (currentPhase === 'debate') {
         setIsMicEnabled(isMyTurn);
         onMicToggle?.(isMyTurn);
-      }
-      // في الحالات الأخرى يكون مغلق
-      else {
+      } else {
         setIsMicEnabled(false);
         onMicToggle?.(false);
       }
@@ -49,18 +47,43 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   // طلب الوصول للميديا
   const requestMediaAccess = async (audio: boolean, video: boolean) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio, video });
+      setPermissionError('');
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: audio ? { echoCancellation: true, noiseSuppression: true } : false, 
+        video: video ? { width: 640, height: 480, facingMode: 'user' } : false 
+      });
+      
       setMediaStream(stream);
+      setHasPermissions(true);
+      
+      // ربط الفيديو بالعنصر المرجعي
+      if (video && videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      
+      console.log('تم الحصول على إذن الوصول للميديا');
       return stream;
     } catch (error) {
-      console.error('Error accessing media devices:', error);
-      alert('لم يتم منح الإذن للوصول للميكروفون أو الكاميرا');
+      console.error('خطأ في الوصول للميديا:', error);
+      let errorMessage = 'لم يتم منح الإذن للوصول للميكروفون أو الكاميرا';
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'تم رفض الإذن. يرجى السماح بالوصول للميكروفون والكاميرا';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = 'لم يتم العثور على الميكروفون أو الكاميرا';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = 'الميكروفون أو الكاميرا مستخدمة من تطبيق آخر';
+        }
+      }
+      
+      setPermissionError(errorMessage);
+      setHasPermissions(false);
       return null;
     }
   };
 
   const toggleMic = async () => {
-    // إذا كان التحكم التلقائي مفعل والمستخدم ليس في دوره في جولة مناظرة، لا يمكن التغيير
     if (isAutoMicEnabled && currentPhase === 'debate' && !isMyTurn) {
       return;
     }
@@ -81,6 +104,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
 
     setIsMicEnabled(newState);
     onMicToggle?.(newState);
+    console.log(`الميكروفون ${newState ? 'مفعل' : 'معطل'}`);
   };
 
   const toggleCamera = async () => {
@@ -96,10 +120,20 @@ const MediaControls: React.FC<MediaControlsProps> = ({
       videoTracks.forEach(track => {
         track.enabled = newState;
       });
+      
+      // تحديث المرجع المرئي
+      if (videoRef.current) {
+        if (newState) {
+          videoRef.current.srcObject = mediaStream;
+        } else {
+          videoRef.current.srcObject = null;
+        }
+      }
     }
 
     setIsCameraEnabled(newState);
     onCameraToggle?.(newState);
+    console.log(`الكاميرا ${newState ? 'مفعلة' : 'معطلة'}`);
   };
 
   const toggleAutoMic = () => {
@@ -131,9 +165,24 @@ const MediaControls: React.FC<MediaControlsProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* معاينة الكاميرا */}
+      {isCameraEnabled && (
+        <div className="flex justify-center">
+          <div className="relative">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-32 h-24 bg-gray-200 rounded-lg object-cover border-2 border-islamic-gold-300"
+            />
+            <div className="absolute top-1 right-1 bg-green-500 w-2 h-2 rounded-full"></div>
+          </div>
+        </div>
+      )}
+
       {/* أزرار التحكم الرئيسية */}
       <div className="flex items-center justify-center space-x-reverse space-x-4">
-        {/* زر الميكروفون */}
         <Button
           onClick={toggleMic}
           variant={isMicEnabled ? "default" : "destructive"}
@@ -152,7 +201,6 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           )}
         </Button>
 
-        {/* زر الكاميرا */}
         <Button
           onClick={toggleCamera}
           variant={isCameraEnabled ? "default" : "outline"}
@@ -166,6 +214,13 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           )}
         </Button>
       </div>
+
+      {/* رسائل الخطأ */}
+      {permissionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-xs text-center">
+          {permissionError}
+        </div>
+      )}
 
       {/* معلومات الحالة */}
       <div className="text-xs text-center space-y-2">
@@ -182,13 +237,16 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           {currentPhase === 'waiting' && 'في الانتظار'}
           {currentPhase === 'ended' && 'انتهت المناظرة'}
         </div>
+        
+        {hasPermissions && (
+          <div className="text-green-600">✓ تم منح الإذن للوصول للميديا</div>
+        )}
       </div>
 
       {/* خيارات التحكم التلقائي */}
       <div className="bg-muted/50 p-4 rounded-lg space-y-3">
         <h4 className="text-sm font-medium text-center">خيارات التحكم</h4>
         
-        {/* التحكم التلقائي في الميكروفون */}
         <div className="flex items-center justify-between">
           <span className="text-xs">تحكم تلقائي في الميكروفون</span>
           <Switch
@@ -197,7 +255,6 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           />
         </div>
 
-        {/* التحكم التلقائي في الكاميرا */}
         <div className="flex items-center justify-between">
           <span className="text-xs">تشغيل الكاميرا تلقائياً</span>
           <Switch

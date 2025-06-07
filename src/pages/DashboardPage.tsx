@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ const DashboardPage = () => {
   const [isDark, setIsDark] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState('');
+  const [isCreatingDebate, setIsCreatingDebate] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,30 +57,40 @@ const DashboardPage = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  const startPrivateDebate = () => {
+  const startPrivateDebate = async () => {
+    if (isCreatingDebate) return;
+    
     setError('');
-    const code = generateCode();
-    const settings = {
-      preparationTime: parseInt(preparationTime),
-      roundTime: parseInt(roundTime),
-      roundCount: parseInt(roundCount),
-      finalTime: parseInt(finalTime)
-    };
+    setIsCreatingDebate(true);
+    
+    try {
+      const settings = {
+        preparationTime: parseInt(preparationTime),
+        roundTime: parseInt(roundTime),
+        roundCount: parseInt(roundCount),
+        finalTime: parseInt(finalTime)
+      };
 
-    const success = debateManager.createPrivateDebate(
-      code,
-      user?.username || 'مجهول',
-      user?.religion || 'غير محدد',
-      settings
-    );
+      const code = debateManager.createPrivateDebate(
+        user?.username || 'مجهول',
+        user?.religion || 'غير محدد',
+        settings
+      );
 
-    if (!success) {
+      if (!code) {
+        setError('حدث خطأ في إنشاء المناظرة. حاول مرة أخرى.');
+        return;
+      }
+
+      localStorage.removeItem('fromRandomQueue');
+      console.log(`انتقال إلى المناظرة بالكود: ${code}`);
+      navigate(`/debate/${code}`);
+    } catch (error) {
+      console.error('خطأ في إنشاء المناظرة:', error);
       setError('حدث خطأ في إنشاء المناظرة. حاول مرة أخرى.');
-      return;
+    } finally {
+      setIsCreatingDebate(false);
     }
-
-    localStorage.removeItem('fromRandomQueue');
-    navigate(`/debate/${code}`);
   };
 
   const joinPrivateDebate = () => {
@@ -96,7 +106,8 @@ const DashboardPage = () => {
       return;
     }
 
-    const debate = debateManager.getDebate(debateCode.toUpperCase());
+    const normalizedCode = debateCode.toUpperCase().trim();
+    const debate = debateManager.getDebate(normalizedCode);
     
     if (!debate) {
       setError('كود المناظرة غير صحيح أو المناظرة غير موجودة');
@@ -119,7 +130,7 @@ const DashboardPage = () => {
     }
 
     const joinedDebate = debateManager.joinPrivateDebate(
-      debateCode.toUpperCase(),
+      normalizedCode,
       user?.username || 'مجهول',
       user?.religion || 'غير محدد'
     );
@@ -130,7 +141,7 @@ const DashboardPage = () => {
     }
 
     localStorage.removeItem('fromRandomQueue');
-    navigate(`/debate/${debateCode.toUpperCase()}`);
+    navigate(`/debate/${normalizedCode}`);
   };
 
   const startRandomDebate = () => {
@@ -329,6 +340,7 @@ const DashboardPage = () => {
                   onChange={(e) => setDebateCode(e.target.value.toUpperCase())}
                   placeholder="أدخل الكود"
                   className="text-center text-lg font-mono"
+                  maxLength={6}
                 />
               </div>
 
@@ -336,8 +348,9 @@ const DashboardPage = () => {
                 <Button
                   onClick={startPrivateDebate}
                   className="w-full islamic-button"
+                  disabled={isCreatingDebate}
                 >
-                  إنشاء مناظرة خاصة
+                  {isCreatingDebate ? 'جاري الإنشاء...' : 'إنشاء مناظرة خاصة'}
                 </Button>
                 <Button
                   onClick={joinPrivateDebate}
