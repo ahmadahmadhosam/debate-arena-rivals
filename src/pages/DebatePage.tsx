@@ -239,6 +239,31 @@ const DebatePage = () => {
     }
   };
 
+  // Get debate settings for display
+  const getDebateSettings = () => {
+    if (debateSession?.settings) {
+      return debateSession.settings;
+    }
+    if (debateSession) {
+      return {
+        preparationTime: debateSession.preparationTime || 1,
+        roundTime: debateSession.roundTime || 5,
+        roundCount: debateSession.roundCount || 5,
+        finalTime: debateSession.finalTime || 5,
+        isPrivate: debateSession.isPrivate !== false
+      };
+    }
+    return {
+      preparationTime: 1,
+      roundTime: 5,
+      roundCount: 5,
+      finalTime: 5,
+      isPrivate: true
+    };
+  };
+
+  const debateSettings = getDebateSettings();
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
