@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, Timer, Users, Settings, LogOut, Moon, Sun } from 'lucide-react';
+import { debateManager } from '@/services/debateManager';
 
 interface User {
   username: string;
@@ -24,6 +25,7 @@ const DashboardPage = () => {
   const [finalTime, setFinalTime] = useState('5');
   const [isDark, setIsDark] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,12 +35,16 @@ const DashboardPage = () => {
     } else {
       navigate('/');
     }
+
+    // تنظيف المناظرات القديمة
+    debateManager.cleanupOldDebates();
   }, [navigate]);
 
   const logout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('fromRandomQueue');
     localStorage.removeItem('currentDebate');
+    debateManager.clearCurrentSession();
     navigate('/');
   };
 
@@ -52,55 +58,77 @@ const DashboardPage = () => {
   };
 
   const startPrivateDebate = () => {
+    setError('');
     const code = generateCode();
-    const debateSettings = {
-      code,
+    const settings = {
       preparationTime: parseInt(preparationTime),
       roundTime: parseInt(roundTime),
       roundCount: parseInt(roundCount),
-      finalTime: parseInt(finalTime),
-      isPrivate: true,
-      creator: user?.username || 'مجهول',
-      creatorReligion: user?.religion || 'غير محدد'
+      finalTime: parseInt(finalTime)
     };
-    
-    // حفظ المناظرة في قائمة المناظرات الخاصة
-    const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
-    existingDebates.push(debateSettings);
-    localStorage.setItem('privateDebates', JSON.stringify(existingDebates));
-    
+
+    const success = debateManager.createPrivateDebate(
+      code,
+      user?.username || 'مجهول',
+      user?.religion || 'غير محدد',
+      settings
+    );
+
+    if (!success) {
+      setError('حدث خطأ في إنشاء المناظرة. حاول مرة أخرى.');
+      return;
+    }
+
     localStorage.removeItem('fromRandomQueue');
-    localStorage.setItem('currentDebate', JSON.stringify(debateSettings));
     navigate(`/debate/${code}`);
   };
 
   const joinPrivateDebate = () => {
+    setError('');
+    
     if (!debateCode.trim()) {
-      alert('يرجى إدخال كود المناظرة');
+      setError('يرجى إدخال كود المناظرة');
       return;
     }
     
-    // التحقق من أن المستخدم لم يأت من طابور عشوائي
     if (localStorage.getItem('fromRandomQueue') === 'true') {
-      alert('لا يمكنك دخول مناظرة خاصة بعد دخول الطابور العشوائي');
+      setError('لا يمكنك دخول مناظرة خاصة بعد دخول الطابور العشوائي');
       return;
     }
 
-    // التحقق من وجود المناظرة
-    const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
-    const foundDebate = existingDebates.find((debate: any) => debate.code === debateCode.toUpperCase());
+    const debate = debateManager.getDebate(debateCode.toUpperCase());
     
-    if (!foundDebate) {
-      alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
+    if (!debate) {
+      setError('كود المناظرة غير صحيح أو المناظرة غير موجودة');
       return;
     }
-    
-    // التحقق من المذهب
-    if (foundDebate.creatorReligion === user?.religion) {
-      alert('لا يمكن للأشخاص من نفس المذهب دخول مناظرة واحدة');
+
+    if (debate.opponent) {
+      setError('المناظرة مكتملة بالفعل');
       return;
     }
-    
+
+    if (debate.creator === user?.username) {
+      setError('لا يمكنك الدخول لمناظرتك الخاصة');
+      return;
+    }
+
+    if (debate.creatorReligion === user?.religion) {
+      setError('لا يمكن للأشخاص من نفس المذهب دخول مناظرة واحدة');
+      return;
+    }
+
+    const joinedDebate = debateManager.joinPrivateDebate(
+      debateCode.toUpperCase(),
+      user?.username || 'مجهول',
+      user?.religion || 'غير محدد'
+    );
+
+    if (!joinedDebate) {
+      setError('فشل في الانضمام للمناظرة');
+      return;
+    }
+
     localStorage.removeItem('fromRandomQueue');
     navigate(`/debate/${debateCode.toUpperCase()}`);
   };
@@ -117,7 +145,6 @@ const DashboardPage = () => {
       creatorReligion: user?.religion || 'غير محدد'
     };
     
-    // تسجيل أن المستخدم دخل الطابور العشوائي
     localStorage.setItem('fromRandomQueue', 'true');
     localStorage.setItem('currentDebate', JSON.stringify(debateSettings));
     navigate('/debate/random');
@@ -182,13 +209,6 @@ const DashboardPage = () => {
                     العودة لصفحة تسجيل الدخول
                   </Button>
                   <Button
-                    variant="outline"
-                    onClick={() => setShowSettings(false)}
-                    className="w-full justify-start"
-                  >
-                    العودة إلى قائمة المناظرات
-                  </Button>
-                  <Button
                     variant="destructive"
                     onClick={logout}
                     className="w-full justify-start"
@@ -205,6 +225,13 @@ const DashboardPage = () => {
 
       {/* المحتوى الرئيسي */}
       <div className="max-w-4xl mx-auto p-4 space-y-6">
+        {/* رسائل الخطأ */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
         {/* إعدادات المناظرة */}
         <Card className="islamic-card">
           <CardHeader>
@@ -376,16 +403,16 @@ const DashboardPage = () => {
                 قواعد المناظرة
               </h3>
               <p className="text-sm text-muted-foreground">
+                • يجب إنشاء حساب مسجل قبل تسجيل الدخول
+              </p>
+              <p className="text-sm text-muted-foreground">
                 • لا يمكن للأشخاص من نفس المذهب دخول مناظرة واحدة
               </p>
               <p className="text-sm text-muted-foreground">
                 • لا يمكن دخول مناظرة خاصة بعد دخول الطابور العشوائي
               </p>
               <p className="text-sm text-muted-foreground">
-                • يتم اختيار البادئ عشوائياً بعد انتهاء وقت التحضير
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • الميكروفون مفتوح في وقت التحضير والنهاية للجميع
+                • المناظرات الخاصة تحتاج لمناظر حقيقي للبدء
               </p>
               <p className="text-sm text-muted-foreground">
                 • يمكن إنهاء الجولة مبكراً فقط للشخص الذي عليه الدور

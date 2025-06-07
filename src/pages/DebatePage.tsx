@@ -1,23 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Users, MessageSquare, Settings, SkipForward, Clock } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Settings, SkipForward, Clock, RefreshCw } from 'lucide-react';
 import DebateTimer from '@/components/DebateTimer';
 import MediaControls from '@/components/MediaControls';
-
-interface DebateSettings {
-  code: string;
-  roundTime: number;
-  roundCount: number;
-  preparationTime: number;
-  finalTime: number;
-  isPrivate: boolean;
-  creator: string;
-  creatorReligion: string;
-}
+import { debateManager } from '@/services/debateManager';
 
 interface User {
   username: string;
@@ -38,13 +29,13 @@ const DebatePage = () => {
   const navigate = useNavigate();
   
   const [user, setUser] = useState<User | null>(null);
-  const [debateSettings, setDebateSettings] = useState<DebateSettings | null>(null);
   const [opponent, setOpponent] = useState<User | null>(null);
   const [currentPhase, setCurrentPhase] = useState<DebatePhase>('waiting');
   const [currentRound, setCurrentRound] = useState(1);
   const [activePlayer, setActivePlayer] = useState<'user' | 'opponent' | 'both' | 'none'>('none');
   const [isFromRandomQueue, setIsFromRandomQueue] = useState(false);
-  const [waitingForOpponent, setWaitingForOpponent] = useState(true);
+  const [debateSession, setDebateSession] = useState<any>(null);
+  const [waitingMessage, setWaitingMessage] = useState('انتظار دخول المناظر...');
   
   // التعليقات المباشرة
   const [comments, setComments] = useState<Comment[]>([]);
@@ -60,62 +51,115 @@ const DebatePage = () => {
       return;
     }
 
-    // التحقق من أن المستخدم لم يأت من طابور عشوائي إذا كانت المناظرة خاصة
     const fromRandom = localStorage.getItem('fromRandomQueue') === 'true';
     setIsFromRandomQueue(fromRandom);
 
-    // للمناظرات الخاصة: التحقق من الكود
     if (code && code !== 'random') {
       handlePrivateDebate(code, fromRandom);
     } else {
       handleRandomDebate();
     }
 
-    // محاكاة دخول المناظر
-    const timer = setTimeout(() => {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const userObj = JSON.parse(userData);
-        const mockOpponent = {
-          username: 'المناظر_المجهول',
-          religion: userObj.religion === 'سني' ? 'شيعي' : 'سني'
-        };
-        setOpponent(mockOpponent);
-        setWaitingForOpponent(false);
-        setCurrentPhase('preparation');
+    // التحقق من دخول مناظر جديد كل 3 ثوانٍ
+    const checkInterval = setInterval(() => {
+      if (code && code !== 'random' && currentPhase === 'waiting') {
+        checkForOpponent(code);
       }
     }, 3000);
 
-    return () => clearTimeout(timer);
-  }, [code, navigate]);
+    return () => clearInterval(checkInterval);
+  }, [code, navigate, currentPhase]);
 
   const handlePrivateDebate = (debateCode: string, fromRandom: boolean) => {
-    // البحث عن المناظرة بالكود
-    const existingDebates = JSON.parse(localStorage.getItem('privateDebates') || '[]');
-    const foundDebate = existingDebates.find((debate: DebateSettings) => debate.code === debateCode);
+    const debate = debateManager.getDebate(debateCode);
     
-    if (!foundDebate) {
+    if (!debate) {
       alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
       navigate('/dashboard');
       return;
     }
 
-    // منع دخول المستخدم من طابور عشوائي إلى غرفة خاصة
-    if (foundDebate.isPrivate && fromRandom) {
+    if (fromRandom) {
       alert('لا يمكنك دخول مناظرة خاصة من الطابور العشوائي');
       navigate('/dashboard');
       return;
     }
 
-    setDebateSettings(foundDebate);
+    setDebateSession(debate);
+    debateManager.setCurrentSession(debate);
+
+    // التحقق من وجود مناظر
+    if (debate.opponent) {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const userObj = JSON.parse(userData);
+        
+        if (debate.creator === userObj.username) {
+          // المستخدم الحالي هو المنشئ
+          setOpponent({
+            username: debate.opponent,
+            religion: debate.opponentReligion || 'غير محدد'
+          });
+        } else {
+          // المستخدم الحالي هو المناظر
+          setOpponent({
+            username: debate.creator,
+            religion: debate.creatorReligion
+          });
+        }
+        
+        setCurrentPhase('preparation');
+      }
+    } else {
+      setWaitingMessage(`في انتظار مناظر من المذهب ${debate.creatorReligion === 'سني' ? 'الشيعي' : 'السني'}`);
+    }
   };
 
   const handleRandomDebate = () => {
-    // جلب إعدادات المناظرة العشوائية
     const settings = localStorage.getItem('currentDebate');
     if (settings) {
       const debateData = JSON.parse(settings);
-      setDebateSettings(debateData);
+      setDebateSession(debateData);
+      setWaitingMessage('البحث عن مناظر من المذهب المختلف...');
+      
+      // محاكاة البحث العشوائي (يمكن تطويرها لاحقاً)
+      setTimeout(() => {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const userObj = JSON.parse(userData);
+          const mockOpponent = {
+            username: 'مناظر_عشوائي',
+            religion: userObj.religion === 'سني' ? 'شيعي' : 'سني'
+          };
+          setOpponent(mockOpponent);
+          setCurrentPhase('preparation');
+        }
+      }, 5000);
+    }
+  };
+
+  const checkForOpponent = (debateCode: string) => {
+    const debate = debateManager.getDebate(debateCode);
+    if (debate && debate.opponent && !opponent) {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const userObj = JSON.parse(userData);
+        
+        if (debate.creator === userObj.username) {
+          setOpponent({
+            username: debate.opponent,
+            religion: debate.opponentReligion || 'غير محدد'
+          });
+        } else {
+          setOpponent({
+            username: debate.creator,
+            religion: debate.creatorReligion
+          });
+        }
+        
+        setCurrentPhase('preparation');
+        setWaitingMessage('');
+      }
     }
   };
 
@@ -123,15 +167,13 @@ const DebatePage = () => {
     switch (currentPhase) {
       case 'preparation':
         setCurrentPhase('debate');
-        // اختيار عشوائي لمن يبدأ
         const randomStart = Math.random() > 0.5 ? 'user' : 'opponent';
         setActivePlayer(randomStart);
         console.log(`تم اختيار ${randomStart === 'user' ? 'المستخدم' : 'المناظر'} لبدء المناظرة`);
         break;
       case 'debate':
-        if (currentRound < (debateSettings?.roundCount || 5)) {
+        if (currentRound < (debateSession?.settings?.roundCount || debateSession?.roundCount || 5)) {
           setCurrentRound(prev => prev + 1);
-          // تبديل الأدوار
           setActivePlayer(activePlayer === 'user' ? 'opponent' : 'user');
         } else {
           setCurrentPhase('final');
@@ -146,7 +188,7 @@ const DebatePage = () => {
   };
 
   const handleSkipRound = () => {
-    if ((activePlayer === 'user' || activePlayer === 'opponent') && currentPhase === 'debate') {
+    if (activePlayer === 'user' && currentPhase === 'debate') {
       handlePhaseTransition();
     }
   };
@@ -165,22 +207,24 @@ const DebatePage = () => {
   };
 
   const getCurrentTimer = () => {
+    const settings = debateSession?.settings || debateSession;
+    
     switch (currentPhase) {
       case 'preparation':
         return {
-          time: (debateSettings?.preparationTime || 1) * 60,
+          time: (settings?.preparationTime || 1) * 60,
           label: 'وقت التحضير',
           variant: 'warning' as const
         };
       case 'debate':
         return {
-          time: (debateSettings?.roundTime || 5) * 60,
-          label: `الجولة ${currentRound} من ${debateSettings?.roundCount || 5}`,
+          time: (settings?.roundTime || 5) * 60,
+          label: `الجولة ${currentRound} من ${settings?.roundCount || 5}`,
           variant: activePlayer === 'user' ? 'primary' as const : 'danger' as const
         };
       case 'final':
         return {
-          time: (debateSettings?.finalTime || 5) * 60,
+          time: (settings?.finalTime || 5) * 60,
           label: 'النقاش النهائي',
           variant: 'warning' as const
         };
@@ -189,7 +233,13 @@ const DebatePage = () => {
     }
   };
 
-  if (!user || !debateSettings) {
+  const refreshOpponentSearch = () => {
+    if (code && code !== 'random') {
+      checkForOpponent(code);
+    }
+  };
+
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -215,11 +265,11 @@ const DebatePage = () => {
             </Button>
             <div>
               <h1 className="text-lg font-bold">
-                مناظرة {debateSettings.isPrivate ? 'خاصة' : 'عشوائية'}
+                مناظرة {debateSession?.isPrivate !== false ? 'خاصة' : 'عشوائية'}
               </h1>
-              {debateSettings.isPrivate && (
+              {debateSession?.code && debateSession.code !== 'RANDOM' && (
                 <p className="text-sm text-muted-foreground">
-                  الكود: {debateSettings.code}
+                  الكود: {debateSession.code}
                 </p>
               )}
             </div>
@@ -257,18 +307,29 @@ const DebatePage = () => {
                     <div className="animate-pulse">
                       <Users className="h-16 w-16 mx-auto text-muted-foreground" />
                     </div>
-                    <p className="text-muted-foreground">
-                      {waitingForOpponent ? 'لم يدخل أحد بعد' : 'جاري الاتصال...'}
-                    </p>
-                    {debateSettings.isPrivate && (
-                      <div className="bg-muted/50 p-4 rounded-lg">
-                        <p className="text-sm">شارك هذا الكود مع المناظر:</p>
-                        <p className="text-2xl font-mono font-bold text-islamic-gold-600">
-                          {debateSettings.code}
-                        </p>
-                      </div>
+                    <p className="text-muted-foreground">{waitingMessage}</p>
+                    
+                    {debateSession?.code && debateSession.code !== 'RANDOM' && (
+                      <>
+                        <div className="bg-muted/50 p-4 rounded-lg">
+                          <p className="text-sm mb-2">شارك هذا الكود مع المناظر:</p>
+                          <p className="text-2xl font-mono font-bold text-islamic-gold-600 mb-2">
+                            {debateSession.code}
+                          </p>
+                          <Button 
+                            onClick={refreshOpponentSearch}
+                            variant="outline" 
+                            size="sm"
+                            className="flex items-center space-x-reverse space-x-2"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            <span>تحديث</span>
+                          </Button>
+                        </div>
+                      </>
                     )}
-                    {!debateSettings.isPrivate && (
+                    
+                    {(!debateSession?.code || debateSession.code === 'RANDOM') && (
                       <div className="bg-blue-50 p-4 rounded-lg">
                         <Clock className="h-8 w-8 mx-auto text-blue-600 mb-2" />
                         <p className="text-sm text-blue-700">
@@ -293,7 +354,7 @@ const DebatePage = () => {
                     )}
 
                     {/* زر إنهاء الجولة */}
-                    {currentPhase === 'debate' && (activePlayer === 'user') && (
+                    {currentPhase === 'debate' && activePlayer === 'user' && (
                       <div className="flex justify-center">
                         <Button
                           onClick={handleSkipRound}
@@ -331,7 +392,7 @@ const DebatePage = () => {
                             <span className="text-white font-bold">خصم</span>
                           </div>
                           <h3 className="font-medium">
-                            {opponent ? opponent.username : 'لم يدخل بعد'}
+                            {opponent ? opponent.username : 'في الانتظار...'}
                           </h3>
                           {opponent && (
                             <Badge variant="secondary">{opponent.religion}</Badge>

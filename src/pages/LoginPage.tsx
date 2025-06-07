@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { userDB } from '@/services/userDatabase';
 
 type Religion = 'سني' | 'شيعي';
 type AuthMode = 'signin' | 'signup';
@@ -15,27 +16,47 @@ const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleAuth = () => {
+    setError('');
+
     if (!selectedReligion || !username || !password) {
-      alert('يرجى ملء جميع الحقول واختيار المذهب');
+      setError('يرجى ملء جميع الحقول واختيار المذهب');
       return;
     }
 
-    if (authMode === 'signup' && password !== confirmPassword) {
-      alert('كلمات المرور غير متطابقة');
-      return;
+    if (authMode === 'signup') {
+      if (password !== confirmPassword) {
+        setError('كلمات المرور غير متطابقة');
+        return;
+      }
+
+      // إنشاء حساب جديد
+      const success = userDB.registerUser(username, password, selectedReligion);
+      if (!success) {
+        setError('اسم المستخدم موجود بالفعل');
+        return;
+      }
+
+      // تسجيل الدخول التلقائي بعد التسجيل
+      const user = userDB.authenticateUser(username, password);
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+        navigate('/dashboard');
+      }
+    } else {
+      // تسجيل الدخول
+      const user = userDB.authenticateUser(username, password);
+      if (!user) {
+        setError('اسم المستخدم أو كلمة المرور غير صحيحة');
+        return;
+      }
+
+      localStorage.setItem('user', JSON.stringify(user));
+      navigate('/dashboard');
     }
-
-    // حفظ بيانات المستخدم محلياً (يجب استبدالها بنظام مصادقة حقيقي)
-    localStorage.setItem('user', JSON.stringify({
-      username,
-      religion: selectedReligion,
-      isAuthenticated: true
-    }));
-
-    navigate('/dashboard');
   };
 
   return (
@@ -55,6 +76,13 @@ const LoginPage = () => {
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* رسالة الخطأ */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
+
             {/* اختيار المذهب */}
             <div className="space-y-3">
               <label className="text-sm font-medium">اختر المذهب:</label>
