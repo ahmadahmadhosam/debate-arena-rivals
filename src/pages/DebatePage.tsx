@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import LanternAnimation from '@/components/LanternAnimation';
 import ClockTimer from '@/components/ClockTimer';
+import { debateManager } from '@/services/debateManager';
 
 interface User {
   username: string;
