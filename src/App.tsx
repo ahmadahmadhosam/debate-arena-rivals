@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import DebatePage from "./pages/DebatePage";
+import ProfilePage from "./pages/ProfilePage";
+import PublicDebatesPage from "./pages/PublicDebatesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +23,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/public-debates" element={<PublicDebatesPage />} />
           <Route path="/debate/:code" element={<DebatePage />} />
           <Route path="/welcome" element={<Index />} />
           <Route path="*" element={<NotFound />} />

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Timer, Users, Settings, LogOut, Moon, Sun } from 'lucide-react';
+import { Clock, Timer, Users, Settings, LogOut, Moon, Sun, User } from 'lucide-react';
 import { debateManager } from '@/services/debateManager';
 
 interface User {
@@ -107,7 +107,10 @@ const DashboardPage = () => {
     }
 
     const normalizedCode = debateCode.toUpperCase().trim();
+    console.log(`محاولة البحث عن المناظرة بالكود: ${normalizedCode}`);
+    
     const debate = debateManager.getDebate(normalizedCode);
+    console.log('نتيجة البحث:', debate);
     
     if (!debate) {
       setError('كود المناظرة غير صحيح أو المناظرة غير موجودة');
@@ -196,6 +199,22 @@ const DashboardPage = () => {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => navigate('/profile')}
+            >
+              <User className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/public-debates')}
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleTheme}
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -212,13 +231,6 @@ const DashboardPage = () => {
                   <DialogTitle>الإعدادات</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('/')}
-                    className="w-full justify-start"
-                  >
-                    العودة لصفحة تسجيل الدخول
-                  </Button>
                   <Button
                     variant="destructive"
                     onClick={logout}
@@ -352,14 +364,15 @@ const DashboardPage = () => {
                 >
                   {isCreatingDebate ? 'جاري الإنشاء...' : 'إنشاء مناظرة خاصة'}
                 </Button>
-                <Button
-                  onClick={joinPrivateDebate}
-                  variant="outline"
-                  className="w-full"
-                  disabled={!debateCode.trim()}
-                >
-                  دخول المناظرة بالكود
-                </Button>
+                {debateCode.trim() && (
+                  <Button
+                    onClick={joinPrivateDebate}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    دخول بالكود: {debateCode}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
