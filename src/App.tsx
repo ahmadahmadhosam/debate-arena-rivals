@@ -10,6 +10,7 @@ import DashboardPage from "./pages/DashboardPage";
 import DebatePage from "./pages/DebatePage";
 import ProfilePage from "./pages/ProfilePage";
 import PublicDebatesPage from "./pages/PublicDebatesPage";
+import RandomDebatesPage from "./pages/RandomDebatesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/public-debates" element={<PublicDebatesPage />} />
+          <Route path="/random-debates" element={<RandomDebatesPage />} />
           <Route path="/debate/:code" element={<DebatePage />} />
           <Route path="/welcome" element={<Index />} />
           <Route path="*" element={<NotFound />} />

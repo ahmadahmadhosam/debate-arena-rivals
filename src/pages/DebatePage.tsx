@@ -98,7 +98,6 @@ const DebatePage = () => {
     setDebateData(debate);
     setDebateSettings(debate.settings);
     
-    // تحديد عنوان المناظرة بناءً على نوعها
     if (debate.isRandom) {
       setDebateTitle('مناظرة عشوائية');
       setIsRandomDebate(true);
@@ -169,7 +168,11 @@ const DebatePage = () => {
   const renderContent = () => {
     if (currentPhase === 'waiting') {
       return (
-        <WaitingScreen message={getWaitingMessage()} />
+        <WaitingScreen 
+          message={getWaitingMessage()} 
+          debateCode={!isRandomDebate ? code : undefined}
+          isPrivateDebate={!isRandomDebate}
+        />
       );
     }
 
@@ -184,24 +187,24 @@ const DebatePage = () => {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
         {/* الشريط العلوي */}
-        <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
+        <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-sky-200">
           <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
             <div className="flex items-center space-x-reverse space-x-4">
               <Button
                 variant="ghost"
                 onClick={() => navigate('/dashboard')}
-                className="p-2"
+                className="p-2 hover:bg-sky-100"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 text-sky-600" />
               </Button>
               <div>
-                <h1 className="text-lg font-bold text-islamic-gold-800 dark:text-islamic-gold-200">
+                <h1 className="text-lg font-bold text-sky-800 dark:text-sky-200">
                   {debateTitle}
                 </h1>
-                {debateData && (
-                  <p className="text-sm text-muted-foreground">
+                {debateData && !isRandomDebate && (
+                  <p className="text-sm text-sky-600 dark:text-sky-300">
                     كود المناظرة: {debateData.code}
                   </p>
                 )}
@@ -209,7 +212,7 @@ const DebatePage = () => {
             </div>
             
             {/* إعدادات المناظرة */}
-            <div className="flex items-center space-x-reverse space-x-4 text-sm">
+            <div className="flex items-center space-x-reverse space-x-4 text-sm text-sky-700">
               {debateSettings && (
                 <>
                   <span>التحضير: {debateSettings.preparationTime} دقيقة</span>
@@ -226,10 +229,10 @@ const DebatePage = () => {
         <div className="max-w-6xl mx-auto p-4">
           {currentPhase === 'preparation' && (
             <div className="text-center space-y-6 p-8">
-              <h3 className="text-xl font-bold text-islamic-gold-600">
+              <h3 className="text-xl font-bold text-sky-600">
                 الجولة {currentRound} - فترة التحضير
               </h3>
-              <p className="text-muted-foreground">
+              <p className="text-sky-500">
                 {selectedPlayer} يبدأ الجولة
               </p>
               <ClockTimer
@@ -243,7 +246,7 @@ const DebatePage = () => {
 
           {currentPhase === 'round' && (
             <div className="text-center space-y-6 p-8">
-              <h3 className="text-xl font-bold text-islamic-blue-600">
+              <h3 className="text-xl font-bold text-blue-600">
                 الجولة {currentRound} - المناظرة جارية
               </h3>
               <ClockTimer
@@ -258,6 +261,7 @@ const DebatePage = () => {
                   onClick={toggleMic}
                   variant="outline"
                   disabled={debateSettings.autoMic}
+                  className="border-sky-300 text-sky-600 hover:bg-sky-50"
                 >
                   {isMicOn ? (
                     <>
@@ -274,6 +278,7 @@ const DebatePage = () => {
                 <Button
                   onClick={toggleMute}
                   variant="outline"
+                  className="border-sky-300 text-sky-600 hover:bg-sky-50"
                 >
                   {isMuted ? (
                     <>
@@ -299,7 +304,16 @@ const DebatePage = () => {
               <ClockTimer
                 initialTime={debateSettings.finalTime * 60}
                 isActive={true}
-                onTimeUp={() => alert('انتهى الوقت!')}
+                onTimeUp={() => {
+                  alert('انتهى الوقت!');
+                  // إذا كانت مناظرة عشوائية، حذفها وانتقال للملف الشخصي
+                  if (isRandomDebate && debateData) {
+                    const debates = debateManager.getRandomDebates();
+                    const updatedDebates = debates.filter(d => d.code !== debateData.code);
+                    debateManager.saveRandomDebates(updatedDebates);
+                    navigate('/profile?tab=completed-debates');
+                  }
+                }}
                 label="وقت النهاية"
                 variant="danger"
               />

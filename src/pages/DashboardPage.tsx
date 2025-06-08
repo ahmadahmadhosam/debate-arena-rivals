@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -151,29 +150,33 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
       {/* الشريط العلوي المحسن */}
-      <div className="bg-white dark:bg-gray-800 shadow-lg border-b">
+      <div className="bg-white dark:bg-gray-800 shadow-lg border-b border-sky-200">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-reverse space-x-4">
-            <div className="w-10 h-10 bg-islamic-gradient rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-r from-sky-500 to-blue-600 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-lg">م</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-islamic-gold-800 dark:text-islamic-gold-200">
+              <h1 className="text-2xl font-bold text-sky-800 dark:text-sky-200">
                 منصة المناظرات الإسلامية
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-sky-600 dark:text-sky-300">
                 مرحباً {user?.username} ({user?.religion})
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-reverse space-x-3">
-            <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/random-debates')} className="border-sky-300 text-sky-600 hover:bg-sky-50">
+              <Users className="h-4 w-4 ml-2" />
+              المناظرات العشوائية
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="border-sky-300 text-sky-600 hover:bg-sky-50">
               <Users className="h-4 w-4 ml-2" />
               الملف الشخصي
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/public-debates')}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/public-debates')} className="border-sky-300 text-sky-600 hover:bg-sky-50">
               <BarChart className="h-4 w-4 ml-2" />
               مناظرات عامة
             </Button>
@@ -188,19 +191,19 @@ const DashboardPage = () => {
       <div className="max-w-6xl mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
           {/* بطاقة الدخول بالكود */}
-          <Card className="islamic-card shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="bg-islamic-blue-50 dark:bg-islamic-blue-900/20">
-              <CardTitle className="text-center text-islamic-blue-600 flex items-center justify-center space-x-reverse space-x-2">
+          <Card className="bg-white/80 backdrop-blur-sm border-sky-200 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-200">
+              <CardTitle className="text-center text-sky-600 flex items-center justify-center space-x-reverse space-x-2">
                 <Code className="h-6 w-6" />
                 <span>الدخول بالكود</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-islamic-blue-100 rounded-full mx-auto flex items-center justify-center">
-                  <Code className="h-8 w-8 text-islamic-blue-600" />
+                <div className="w-16 h-16 bg-sky-100 rounded-full mx-auto flex items-center justify-center">
+                  <Code className="h-8 w-8 text-sky-600" />
                 </div>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sky-600 text-sm">
                   ادخل كود المناظرة للانضمام إلى مناظرة خاصة
                 </p>
                 <div className="space-y-3">
@@ -209,12 +212,12 @@ const DashboardPage = () => {
                     placeholder="أدخل كود المناظرة (6 أحرف)"
                     value={privateCode}
                     onChange={(e) => setPrivateCode(e.target.value.toUpperCase())}
-                    className="text-center text-lg font-mono tracking-widest"
+                    className="text-center text-lg font-mono tracking-widest border-sky-300 focus:border-sky-500"
                     maxLength={6}
                   />
                   <Button 
                     onClick={handleJoinPrivateDebate}
-                    className="w-full bg-islamic-blue-500 hover:bg-islamic-blue-600 text-white"
+                    className="w-full bg-sky-500 hover:bg-sky-600 text-white"
                     size="lg"
                   >
                     دخول المناظرة
@@ -225,9 +228,9 @@ const DashboardPage = () => {
           </Card>
 
           {/* بطاقة إنشاء مناظرة خاصة */}
-          <Card className="islamic-card shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="bg-islamic-gold-50 dark:bg-islamic-gold-900/20">
-              <CardTitle className="text-center text-islamic-gold-600 flex items-center justify-center space-x-reverse space-x-2">
+          <Card className="bg-white/80 backdrop-blur-sm border-sky-200 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-sky-50 border-b border-sky-200">
+              <CardTitle className="text-center text-blue-600 flex items-center justify-center space-x-reverse space-x-2">
                 <Users className="h-6 w-6" />
                 <span>إنشاء مناظرة خاصة</span>
               </CardTitle>
@@ -235,9 +238,9 @@ const DashboardPage = () => {
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="prep-time" className="text-sm font-medium">وقت التحضير</Label>
+                  <Label htmlFor="prep-time" className="text-sm font-medium text-sky-700">وقت التحضير</Label>
                   <Select value={preparationTime} onValueChange={setPreparationTime}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
                       <SelectValue placeholder="اختر الوقت" />
                     </SelectTrigger>
                     <SelectContent>
@@ -250,9 +253,9 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="round-time" className="text-sm font-medium">وقت الجولة</Label>
+                  <Label htmlFor="round-time" className="text-sm font-medium text-sky-700">وقت الجولة</Label>
                   <Select value={roundTime} onValueChange={setRoundTime}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
                       <SelectValue placeholder="اختر الوقت" />
                     </SelectTrigger>
                     <SelectContent>
@@ -265,9 +268,9 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="round-count" className="text-sm font-medium">عدد الجولات</Label>
+                  <Label htmlFor="round-count" className="text-sm font-medium text-sky-700">عدد الجولات</Label>
                   <Select value={roundCount} onValueChange={setRoundCount}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
                       <SelectValue placeholder="اختر العدد" />
                     </SelectTrigger>
                     <SelectContent>
@@ -280,9 +283,9 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="final-time" className="text-sm font-medium">وقت النهاية</Label>
+                  <Label htmlFor="final-time" className="text-sm font-medium text-sky-700">وقت النهاية</Label>
                   <Select value={finalTime} onValueChange={setFinalTime}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
                       <SelectValue placeholder="اختر الوقت" />
                     </SelectTrigger>
                     <SelectContent>
@@ -295,23 +298,23 @@ const DashboardPage = () => {
                 </div>
               </div>
 
-              <div className="bg-muted/50 p-4 rounded-lg">
+              <div className="bg-sky-50 p-4 rounded-lg border border-sky-200">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="auto-mic" className="text-sm font-medium">تشغيل الميكروفون تلقائياً</Label>
+                  <Label htmlFor="auto-mic" className="text-sm font-medium text-sky-700">تشغيل الميكروفون تلقائياً</Label>
                   <Switch
                     id="auto-mic"
                     checked={autoMic}
                     onCheckedChange={setAutoMic}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-sky-600 mt-2">
                   سيتم تشغيل الميكروفون تلقائياً في بداية كل جولة
                 </p>
               </div>
 
               <Button 
                 onClick={handleCreatePrivateDebate}
-                className="w-full bg-islamic-gradient hover:opacity-90 text-white"
+                className="w-full bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white"
                 size="lg"
               >
                 إنشاء مناظرة خاصة
@@ -320,8 +323,8 @@ const DashboardPage = () => {
           </Card>
 
           {/* بطاقة المناظرات العشوائية */}
-          <Card className="islamic-card shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-2 xl:col-span-1">
-            <CardHeader className="bg-green-50 dark:bg-green-900/20">
+          <Card className="bg-white/80 backdrop-blur-sm border-sky-200 shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-2 xl:col-span-1">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200">
               <CardTitle className="text-center text-green-600 flex items-center justify-center space-x-reverse space-x-2">
                 <Shuffle className="h-6 w-6" />
                 <span>المناظرات العشوائية</span>
@@ -333,8 +336,8 @@ const DashboardPage = () => {
                   <Shuffle className="h-10 w-10 text-green-600" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-lg">مناظرة سريعة</h3>
-                  <p className="text-muted-foreground text-sm">
+                  <h3 className="font-semibold text-lg text-green-700">مناظرة سريعة</h3>
+                  <p className="text-green-600 text-sm">
                     ابدأ مناظرة فورية مع مناظر عشوائي من المذهب المختلف
                   </p>
                 </div>
@@ -342,9 +345,9 @@ const DashboardPage = () => {
                 {/* إعدادات المناظرة العشوائية */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">وقت التحضير</Label>
+                    <Label className="text-xs text-green-700">وقت التحضير</Label>
                     <Select value={randomPreparationTime} onValueChange={setRandomPreparationTime}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-8 text-xs border-green-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -357,9 +360,9 @@ const DashboardPage = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs">وقت الجولة</Label>
+                    <Label className="text-xs text-green-700">وقت الجولة</Label>
                     <Select value={randomRoundTime} onValueChange={setRandomRoundTime}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-8 text-xs border-green-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -372,9 +375,9 @@ const DashboardPage = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs">عدد الجولات</Label>
+                    <Label className="text-xs text-green-700">عدد الجولات</Label>
                     <Select value={randomRoundCount} onValueChange={setRandomRoundCount}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-8 text-xs border-green-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -387,9 +390,9 @@ const DashboardPage = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs">وقت النهاية</Label>
+                    <Label className="text-xs text-green-700">وقت النهاية</Label>
                     <Select value={randomFinalTime} onValueChange={setRandomFinalTime}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-8 text-xs border-green-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -402,9 +405,9 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-                <div className="bg-muted/50 p-3 rounded-lg">
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">تشغيل الميكروفون تلقائياً</Label>
+                    <Label className="text-xs font-medium text-green-700">تشغيل الميكروفون تلقائياً</Label>
                     <Switch
                       checked={randomAutoMic}
                       onCheckedChange={setRandomAutoMic}
