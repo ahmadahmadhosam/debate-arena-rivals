@@ -1,314 +1,283 @@
-
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, Users, MessageSquare, Settings, SkipForward, RefreshCw } from 'lucide-react';
-import ClockTimer from '@/components/ClockTimer';
-import MediaControls from '@/components/MediaControls';
+import { ArrowLeft, Users, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import LanternAnimation from '@/components/LanternAnimation';
-import { debateManager } from '@/services/debateManager';
+import ClockTimer from '@/components/ClockTimer';
 
 interface User {
   username: string;
   religion: string;
 }
 
-interface Comment {
-  id: string;
-  username: string;
-  message: string;
-  timestamp: Date;
+interface DebateSession {
+  code: string;
+  creator: string;
+  creatorReligion: string;
+  opponent?: string;
+  opponentReligion?: string;
+  settings: {
+    preparationTime: number;
+    roundTime: number;
+    roundCount: number;
+    finalTime: number;
+    autoMic?: boolean;
+  };
+  isActive: boolean;
+  createdAt: Date;
 }
 
-type DebatePhase = 'waiting' | 'preparation' | 'choosing' | 'debate' | 'final' | 'ended';
-
 const DebatePage = () => {
-  const { code } = useParams();
+  const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  
-  const [user, setUser] = useState<User | null>(null);
-  const [opponent, setOpponent] = useState<User | null>(null);
-  const [currentPhase, setCurrentPhase] = useState<DebatePhase>('waiting');
-  const [currentRound, setCurrentRound] = useState(1);
-  const [activePlayer, setActivePlayer] = useState<'user' | 'opponent' | 'both' | 'none'>('none');
-  const [isFromRandomQueue, setIsFromRandomQueue] = useState(false);
-  const [debateSession, setDebateSession] = useState<any>(null);
-  const [waitingMessage, setWaitingMessage] = useState('انتظار دخول المناظر...');
-  const [totalRounds, setTotalRounds] = useState(0);
-  
-  // التعليقات المباشرة
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState('');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [debateData, setDebateData] = useState<DebateSession | null>(null);
+  const [debateSettings, setDebateSettings] = useState<any>(null);
+  const [debateTitle, setDebateTitle] = useState<string>('المناظرة');
+  const [currentPhase, setCurrentPhase] = useState<
+    'waiting' | 'preparation' | 'round' | 'final' | 'selectStart'
+  >('waiting');
+  const [player1, setPlayer1] = useState<string>('');
+  const [player2, setPlayer2] = useState<string>('');
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [currentRound, setCurrentRound] = useState<number>(1);
+  const [isWaitingForOpponent, setIsWaitingForOpponent] = useState<boolean>(true);
+  const [isRandomDebate, setIsRandomDebate] = useState<boolean>(false);
+  const [isMicOn, setIsMicOn] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      setCurrentUser(JSON.parse(userData));
     } else {
       navigate('/');
       return;
     }
 
-    const fromRandom = localStorage.getItem('fromRandomQueue') === 'true';
-    setIsFromRandomQueue(fromRandom);
-
-    if (code && code !== 'random') {
-      handlePrivateDebate(code, fromRandom);
-    } else {
-      handleRandomDebate();
-    }
-
-    const checkInterval = setInterval(() => {
-      if (code && code !== 'random' && currentPhase === 'waiting') {
-        checkForOpponent(code);
-      }
-    }, 3000);
-
-    return () => clearInterval(checkInterval);
-  }, [code, navigate, currentPhase]);
-
-  const handlePrivateDebate = (debateCode: string, fromRandom: boolean) => {
-    console.log(`التعامل مع المناظرة الخاصة: ${debateCode}`);
+    const isFromRandomQueue = localStorage.getItem('fromRandomQueue') === 'true';
     
-    const debate = debateManager.getDebate(debateCode);
-    
-    if (!debate) {
-      console.log('المناظرة غير موجودة');
-      alert('كود المناظرة غير صحيح أو المناظرة غير موجودة');
-      navigate('/dashboard');
-      return;
-    }
-
-    console.log('تم العثور على المناظرة:', debate);
-
-    if (fromRandom) {
-      alert('لا يمكنك دخول مناظرة خاصة من الطابور العشوائي');
-      navigate('/dashboard');
-      return;
-    }
-
-    setDebateSession(debate);
-    debateManager.setCurrentSession(debate);
-
-    if (debate.opponent) {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const userObj = JSON.parse(userData);
-        
-        if (debate.creator === userObj.username) {
-          setOpponent({
-            username: debate.opponent,
-            religion: debate.opponentReligion || 'غير محدد'
-          });
-        } else {
-          setOpponent({
-            username: debate.creator,
-            religion: debate.creatorReligion
-          });
-        }
-        
-        setCurrentPhase('preparation');
-        console.log('بدء مرحلة التحضير');
+    if (code === 'random' || isFromRandomQueue) {
+      setIsRandomDebate(true);
+      setDebateTitle('مناظرة عشوائية');
+      
+      const currentDebateSettings = localStorage.getItem('currentDebate');
+      if (currentDebateSettings) {
+        const settings = JSON.parse(currentDebateSettings);
+        setDebateSettings(settings);
+        setCurrentPhase('waiting');
+        setIsWaitingForOpponent(true);
       }
     } else {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const userObj = JSON.parse(userData);
-        const oppositeReligion = userObj.religion === 'سني' ? 'شيعي' : 'سني';
-        setWaitingMessage(`انتظار مناظر ${oppositeReligion}`);
+      setDebateTitle('مناظرة خاصة');
+      loadPrivateDebate();
+    }
+
+    return () => {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
       }
-      console.log('في انتظار مناظر');
-    }
-  };
-
-  const handleRandomDebate = () => {
-    const settings = localStorage.getItem('currentDebate');
-    if (settings) {
-      const debateData = JSON.parse(settings);
-      setDebateSession(debateData);
-      
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const userObj = JSON.parse(userData);
-        const oppositeReligion = userObj.religion === 'سني' ? 'شيعي' : 'سني';
-        setWaitingMessage(`انتظار مناظر ${oppositeReligion}`);
-      }
-      
-      // محاكاة البحث العشوائي
-      setTimeout(() => {
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          const userObj = JSON.parse(userData);
-          const mockOpponent = {
-            username: 'مناظر_عشوائي',
-            religion: userObj.religion === 'سني' ? 'شيعي' : 'سني'
-          };
-          setOpponent(mockOpponent);
-          setCurrentPhase('preparation');
-        }
-      }, 5000);
-    }
-  };
-
-  const checkForOpponent = (debateCode: string) => {
-    const debate = debateManager.getDebate(debateCode);
-    console.log(`التحقق من وجود مناظر للكود: ${debateCode}`, debate);
-    
-    if (debate && debate.opponent && !opponent) {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const userObj = JSON.parse(userData);
-        
-        if (debate.creator === userObj.username) {
-          setOpponent({
-            username: debate.opponent,
-            religion: debate.opponentReligion || 'غير محدد'
-          });
-        } else {
-          setOpponent({
-            username: debate.creator,
-            religion: debate.creatorReligion
-          });
-        }
-        
-        setCurrentPhase('preparation');
-        setWaitingMessage('');
-        console.log('تم العثور على مناظر، بدء التحضير');
-      }
-    }
-  };
-
-  const handlePhaseTransition = () => {
-    switch (currentPhase) {
-      case 'preparation':
-        setCurrentPhase('choosing');
-        break;
-      case 'choosing':
-        // سيتم التعامل معها في LanternAnimation
-        break;
-      case 'debate':
-        const settings = debateSession?.settings || debateSession;
-        const maxRounds = Number(settings?.roundCount || 5) * 2; // ضرب في 2 لأن كل مناظر له جولة
-        
-        if (currentRound < maxRounds) {
-          setCurrentRound(prev => prev + 1);
-          setActivePlayer(activePlayer === 'user' ? 'opponent' : 'user');
-        } else {
-          setCurrentPhase('final');
-          setActivePlayer('both');
-        }
-        break;
-      case 'final':
-        setCurrentPhase('ended');
-        setActivePlayer('none');
-        break;
-    }
-  };
-
-  const handlePlayerSelected = (selectedPlayerName: string) => {
-    console.log(`تم اختيار ${selectedPlayerName} لبدء المناظرة`);
-    const isUserSelected = selectedPlayerName === user?.username;
-    setActivePlayer(isUserSelected ? 'user' : 'opponent');
-    setCurrentPhase('debate');
-    setCurrentRound(1);
-    
-    // حساب العدد الكلي للجولات
-    const settings = debateSession?.settings || debateSession;
-    const baseRounds = Number(settings?.roundCount || 5);
-    setTotalRounds(baseRounds * 2); // كل مناظر له جولات منفصلة
-  };
-
-  const handleSkipRound = () => {
-    if (activePlayer === 'user' && currentPhase === 'debate') {
-      handlePhaseTransition();
-    }
-  };
-
-  const addComment = () => {
-    if (newComment.trim() && user) {
-      const comment: Comment = {
-        id: Date.now().toString(),
-        username: user.username,
-        message: newComment.trim(),
-        timestamp: new Date()
-      };
-      setComments(prev => [...prev, comment]);
-      setNewComment('');
-    }
-  };
-
-  const getCurrentTimer = () => {
-    const settings = debateSession?.settings || debateSession;
-    
-    switch (currentPhase) {
-      case 'preparation':
-        return {
-          time: (settings?.preparationTime || 1) * 60,
-          label: 'وقت التحضير',
-          variant: 'warning' as const
-        };
-      case 'debate':
-        return {
-          time: (settings?.roundTime || 5) * 60,
-          label: `الجولة ${currentRound} من ${totalRounds}`,
-          variant: activePlayer === 'user' ? 'primary' as const : 'danger' as const
-        };
-      case 'final':
-        return {
-          time: (settings?.finalTime || 5) * 60,
-          label: 'النقاش النهائي',
-          variant: 'warning' as const
-        };
-      default:
-        return null;
-    }
-  };
-
-  const refreshOpponentSearch = () => {
-    if (code && code !== 'random') {
-      checkForOpponent(code);
-    }
-  };
-
-  const getDebateSettings = () => {
-    if (debateSession?.settings) {
-      return debateSession.settings;
-    }
-    if (debateSession) {
-      return {
-        preparationTime: debateSession.preparationTime || 1,
-        roundTime: debateSession.roundTime || 5,
-        roundCount: debateSession.roundCount || 5,
-        finalTime: debateSession.finalTime || 5,
-        isPrivate: debateSession.isPrivate !== false,
-        autoMic: debateSession.autoMic || false
-      };
-    }
-    return {
-      preparationTime: 1,
-      roundTime: 5,
-      roundCount: 5,
-      finalTime: 5,
-      isPrivate: true,
-      autoMic: false
     };
+  }, [code, navigate]);
+
+  const loadPrivateDebate = () => {
+    if (!code || code === 'random') return;
+    
+    const debate = debateManager.getDebate(code);
+    if (!debate) {
+      alert('المناظرة غير موجودة');
+      navigate('/dashboard');
+      return;
+    }
+
+    setDebateData(debate);
+    setDebateSettings(debate.settings);
+    
+    if (debate.opponent && debate.isActive) {
+      setCurrentPhase('preparation');
+      setPlayer1(debate.creator);
+      setPlayer2(debate.opponent);
+      setIsWaitingForOpponent(false);
+    } else {
+      setCurrentPhase('waiting');
+      setIsWaitingForOpponent(true);
+    }
   };
 
-  const debateSettings = getDebateSettings();
+  const handlePlayerSelected = (playerName: string) => {
+    setSelectedPlayer(playerName);
+    setCurrentPhase('preparation');
+  };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-islamic-gold-600 mx-auto"></div>
-          <p>جاري التحميل...</p>
+  const startRound = () => {
+    setCurrentPhase('round');
+  };
+
+  const endRound = () => {
+    if (currentRound < debateSettings.roundCount) {
+      setCurrentRound(currentRound + 1);
+      setCurrentPhase('preparation');
+    } else {
+      setCurrentPhase('final');
+    }
+  };
+
+  const toggleMic = async () => {
+    try {
+      if (!mediaStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStreamRef.current = stream;
+      }
+
+      const audioTracks = mediaStreamRef.current.getAudioTracks();
+      if (audioTracks.length > 0) {
+        audioTracks.forEach(track => track.enabled = !isMicOn);
+        setIsMicOn(!isMicOn);
+      } else {
+        console.error('No audio tracks available.');
+      }
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
+  const getWaitingMessage = () => {
+    if (!currentUser) return 'انتظار...';
+    
+    const opponentReligion = currentUser.religion === 'سني' ? 'شيعي' : 'سني';
+    return `انتظار مناظر ${opponentReligion}`;
+  };
+
+  const renderContent = () => {
+    if (currentPhase === 'waiting') {
+      return (
+        <div className="text-center space-y-6 p-8">
+          <div className="w-24 h-24 bg-islamic-gold-100 rounded-full mx-auto flex items-center justify-center animate-pulse">
+            <Users className="h-12 w-12 text-islamic-gold-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-islamic-gold-600 mb-2">
+              {getWaitingMessage()}
+            </h2>
+            {debateData && (
+              <div className="bg-islamic-gold-50 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-muted-foreground mb-2">
+                  كود المناظرة: <span className="font-mono font-bold">{debateData.code}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  شارك هذا الكود مع الآخرين للانضمام
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
+
+    if (currentPhase === 'selectStart') {
+      return (
+        <LanternAnimation
+          player1Name={player1}
+          player2Name={player2}
+          onPlayerSelected={handlePlayerSelected}
+        />
+      );
+    }
+
+    if (currentPhase === 'preparation') {
+      return (
+        <div className="text-center space-y-6 p-8">
+          <h3 className="text-xl font-bold text-islamic-gold-600">
+            الجولة {currentRound} - فترة التحضير
+          </h3>
+          <p className="text-muted-foreground">
+            {selectedPlayer} يبدأ الجولة
+          </p>
+          <ClockTimer
+            initialTime={debateSettings.preparationTime * 60}
+            isActive={true}
+            onTimeUp={startRound}
+            label="وقت التحضير"
+          />
+        </div>
+      );
+    }
+
+    if (currentPhase === 'round') {
+      return (
+        <div className="text-center space-y-6 p-8">
+          <h3 className="text-xl font-bold text-islamic-blue-600">
+            الجولة {currentRound} - المناظرة جارية
+          </h3>
+          <ClockTimer
+            initialTime={debateSettings.roundTime * 60}
+            isActive={true}
+            onTimeUp={endRound}
+            label="وقت الجولة"
+            variant="warning"
+          />
+          <div className="flex justify-center space-x-4">
+            <Button
+              onClick={toggleMic}
+              variant="outline"
+            >
+              {isMicOn ? (
+                <>
+                  <Mic className="h-4 w-4 ml-2" />
+                  إيقاف الميكروفون
+                </>
+              ) : (
+                <>
+                  <MicOff className="h-4 w-4 ml-2" />
+                  تشغيل الميكروفون
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={toggleMute}
+              variant="outline"
+            >
+              {isMuted ? (
+                <>
+                  <VolumeX className="h-4 w-4 ml-2" />
+                  إلغاء الكتم
+                </>
+              ) : (
+                <>
+                  <Volume2 className="h-4 w-4 ml-2" />
+                  كتم الصوت
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (currentPhase === 'final') {
+      return (
+        <div className="text-center space-y-6 p-8">
+          <h3 className="text-xl font-bold text-red-600">
+            المناظرة انتهت - وقت النهاية
+          </h3>
+          <ClockTimer
+            initialTime={debateSettings.finalTime * 60}
+            isActive={true}
+            onTimeUp={() => alert('انتهى الوقت!')}
+            label="وقت النهاية"
+            variant="danger"
+          />
+        </div>
+      );
+    }
+
+    return <div className="text-center">Loading...</div>;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800">
@@ -324,225 +293,33 @@ const DebatePage = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-bold">
-                مناظرة {debateSession?.isPrivate !== false ? 'خاصة' : 'عشوائية'}
+              <h1 className="text-lg font-bold text-islamic-gold-800 dark:text-islamic-gold-200">
+                {debateTitle}
               </h1>
-              {debateSession?.code && debateSession.code !== 'RANDOM' && (
+              {debateData && (
                 <p className="text-sm text-muted-foreground">
-                  الكود: {debateSession.code}
+                  كود المناظرة: {debateData.code}
                 </p>
               )}
             </div>
           </div>
-
-          <div className="flex items-center space-x-reverse space-x-2">
-            <Badge variant="secondary">
-              {user.religion}
-            </Badge>
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
+          
+          {/* إعدادات المناظرة */}
+          <div className="flex items-center space-x-reverse space-x-4 text-sm">
+            {debateSettings && (
+              <>
+                <span>التحضير: {debateSettings.preparationTime} دقيقة</span>
+                <span>الجولة: {debateSettings.roundTime} دقيقة</span>
+                <span>الجولات: {debateSettings.roundCount}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
+      {/* المحتوى الرئيسي */}
       <div className="max-w-6xl mx-auto p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* منطقة المناظرة الرئيسية */}
-          <div className="lg:col-span-3 space-y-6">
-            <Card className="islamic-card">
-              <CardHeader>
-                <CardTitle className="text-center">
-                  {currentPhase === 'waiting' && 'انتظار دخول المناظر'}
-                  {currentPhase === 'preparation' && 'فترة التحضير'}
-                  {currentPhase === 'choosing' && 'اختيار من سيبدأ'}
-                  {currentPhase === 'debate' && `الجولة ${currentRound} من ${totalRounds}`}
-                  {currentPhase === 'final' && 'النقاش النهائي'}
-                  {currentPhase === 'ended' && 'انتهت المناظرة'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {currentPhase === 'waiting' ? (
-                  <div className="text-center space-y-4">
-                    <div className="animate-pulse">
-                      <Users className="h-16 w-16 mx-auto text-muted-foreground" />
-                    </div>
-                    <p className="text-muted-foreground">{waitingMessage}</p>
-                    
-                    {debateSession?.code && debateSession.code !== 'RANDOM' && (
-                      <div className="bg-muted/50 p-4 rounded-lg">
-                        <p className="text-sm mb-2">شارك هذا الكود مع المناظر:</p>
-                        <p className="text-2xl font-mono font-bold text-islamic-gold-600 mb-2">
-                          {debateSession.code}
-                        </p>
-                        <Button 
-                          onClick={refreshOpponentSearch}
-                          variant="outline" 
-                          size="sm"
-                          className="flex items-center space-x-reverse space-x-2"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          <span>تحديث</span>
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ) : currentPhase === 'choosing' ? (
-                  <LanternAnimation
-                    player1Name={user.username}
-                    player2Name={opponent?.username || 'المناظر'}
-                    onPlayerSelected={handlePlayerSelected}
-                  />
-                ) : (
-                  <div className="space-y-6">
-                    {/* المؤقت على شكل ساعة */}
-                    {getCurrentTimer() && (
-                      <div className="flex justify-center">
-                        <ClockTimer
-                          initialTime={getCurrentTimer()!.time}
-                          isActive={currentPhase !== 'ended'}
-                          onTimeUp={handlePhaseTransition}
-                          label={getCurrentTimer()!.label}
-                          variant={getCurrentTimer()!.variant}
-                        />
-                      </div>
-                    )}
-
-                    {/* زر إنهاء الجولة */}
-                    {currentPhase === 'debate' && activePlayer === 'user' && (
-                      <div className="flex justify-center">
-                        <Button
-                          onClick={handleSkipRound}
-                          variant="outline"
-                          className="flex items-center space-x-reverse space-x-2"
-                        >
-                          <SkipForward className="h-4 w-4" />
-                          <span>إنهاء جولتي</span>
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* معلومات المناظرين */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-lg border-2 transition-colors ${
-                        activePlayer === 'user' ? 'border-green-400 bg-green-50' : 'border-gray-200'
-                      }`}>
-                        <div className="text-center space-y-2">
-                          <div className="w-12 h-12 bg-islamic-gradient rounded-full mx-auto flex items-center justify-center">
-                            <span className="text-white font-bold">أنت</span>
-                          </div>
-                          <h3 className="font-medium">{user.username}</h3>
-                          <Badge variant="secondary">{user.religion}</Badge>
-                          {activePlayer === 'user' && currentPhase === 'debate' && (
-                            <p className="text-xs text-green-600 font-medium">دورك للحديث</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className={`p-4 rounded-lg border-2 transition-colors ${
-                        activePlayer === 'opponent' ? 'border-red-400 bg-red-50' : 'border-gray-200'
-                      }`}>
-                        <div className="text-center space-y-2">
-                          <div className="w-12 h-12 bg-islamic-blue-500 rounded-full mx-auto flex items-center justify-center">
-                            <span className="text-white font-bold">خصم</span>
-                          </div>
-                          <h3 className="font-medium">
-                            {opponent ? opponent.username : 'في الانتظار...'}
-                          </h3>
-                          {opponent && (
-                            <Badge variant="secondary">{opponent.religion}</Badge>
-                          )}
-                          {activePlayer === 'opponent' && currentPhase === 'debate' && (
-                            <p className="text-xs text-red-600 font-medium">دور المناظر</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* أدوات التحكم في الميديا */}
-                    <MediaControls
-                      isMyTurn={activePlayer === 'user' || activePlayer === 'both'}
-                      autoMicControl={debateSettings.autoMic}
-                      currentPhase={currentPhase}
-                      canDisableAutoMic={false}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* منطقة التعليقات المباشرة */}
-          <div className="space-y-4">
-            <Card className="islamic-card h-96">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-reverse space-x-2 text-sm">
-                  <MessageSquare className="h-4 w-4" />
-                  <span>التعليقات المباشرة</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="h-64 flex flex-col">
-                <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="bg-muted/50 p-2 rounded text-xs">
-                      <div className="font-medium text-islamic-gold-600">
-                        {comment.username}
-                      </div>
-                      <div>{comment.message}</div>
-                    </div>
-                  ))}
-                  {comments.length === 0 && (
-                    <p className="text-center text-muted-foreground text-xs">
-                      لا توجد تعليقات بعد
-                    </p>
-                  )}
-                </div>
-                
-                <div className="flex space-x-reverse space-x-2">
-                  <Input
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="اكتب تعليقاً..."
-                    className="text-xs"
-                    onKeyPress={(e) => e.key === 'Enter' && addComment()}
-                  />
-                  <Button onClick={addComment} size="sm">
-                    إرسال
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* معلومات المناظرة */}
-            <Card className="islamic-card">
-              <CardHeader>
-                <CardTitle className="text-sm">معلومات المناظرة</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span>وقت التحضير:</span>
-                  <span>{debateSettings.preparationTime} دقيقة</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>وقت الجولة:</span>
-                  <span>{debateSettings.roundTime} دقيقة</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>عدد الجولات:</span>
-                  <span>{debateSettings.roundCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>وقت النهاية:</span>
-                  <span>{debateSettings.finalTime} دقيقة</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>النوع:</span>
-                  <span>{debateSettings.isPrivate ? 'خاصة' : 'عشوائية'}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        {renderContent()}
       </div>
     </div>
   );

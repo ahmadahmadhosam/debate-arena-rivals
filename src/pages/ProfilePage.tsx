@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Users, Trophy, Clock, Eye, EyeOff } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowLeft, Users, Trophy, Clock, Eye, EyeOff, MoreVertical, Globe, Lock } from 'lucide-react';
 import { debateManager } from '@/services/debateManager';
 
 interface User {
@@ -29,6 +30,7 @@ interface PublishedDebate {
     roundTime: number;
     roundCount: number;
     finalTime: number;
+    autoMic?: boolean;
   };
 }
 
@@ -38,7 +40,8 @@ const ProfilePage = () => {
   const [stats, setStats] = useState({
     totalDebates: 0,
     completedDebates: 0,
-    publishedDebates: 0
+    publicDebates: 0,
+    privateDebates: 0
   });
   const navigate = useNavigate();
 
@@ -53,18 +56,17 @@ const ProfilePage = () => {
   }, [navigate]);
 
   const loadUserData = (userData: User) => {
-    // تحميل المناظرات المنشورة
     const debates = getPublishedDebates();
     const userDebates = debates.filter(d => 
       d.creator === userData.username || d.opponent === userData.username
     );
     setPublishedDebates(userDebates);
 
-    // حساب الإحصائيات
     setStats({
       totalDebates: userDebates.length,
       completedDebates: userDebates.filter(d => d.opponent).length,
-      publishedDebates: userDebates.filter(d => d.isPublic).length
+      publicDebates: userDebates.filter(d => d.isPublic).length,
+      privateDebates: userDebates.filter(d => !d.isPublic).length
     });
   };
 
@@ -77,20 +79,46 @@ const ProfilePage = () => {
     localStorage.setItem('publishedDebates', JSON.stringify(debates));
   };
 
-  const toggleDebateVisibility = (code: string) => {
+  const toggleDebateVisibility = (code: string, makePublic: boolean) => {
     const debates = getPublishedDebates();
     const debateIndex = debates.findIndex(d => d.code === code);
     
     if (debateIndex !== -1) {
-      debates[debateIndex].isPublic = !debates[debateIndex].isPublic;
+      debates[debateIndex].isPublic = makePublic;
       savePublishedDebates(debates);
       loadUserData(user!);
     }
   };
 
-  const publishCurrentDebate = () => {
-    // هذه الوظيفة ستتم إضافتها لاحقاً في صفحة المناظرة
-    console.log('نشر المناظرة الحالية');
+  const publishDebate = (code: string, isPublic: boolean) => {
+    const debates = getPublishedDebates();
+    const existingDebate = debates.find(d => d.code === code);
+    
+    if (!existingDebate) {
+      // إضافة المناظرة كمنشورة جديدة
+      const activeDebates = debateManager.getActiveDebates();
+      const debate = activeDebates.find(d => d.code === code);
+      
+      if (debate) {
+        const publishedDebate: PublishedDebate = {
+          code: debate.code,
+          title: `مناظرة ${debate.creator} vs ${debate.opponent || 'منتظر'}`,
+          creator: debate.creator,
+          creatorReligion: debate.creatorReligion,
+          opponent: debate.opponent,
+          opponentReligion: debate.opponentReligion,
+          isPublic,
+          publishedAt: new Date(),
+          settings: debate.settings
+        };
+        
+        debates.push(publishedDebate);
+        savePublishedDebates(debates);
+        loadUserData(user!);
+      }
+    } else {
+      toggleDebateVisibility(code, isPublic);
+    }
   };
 
   if (!user) {
@@ -147,36 +175,42 @@ const ProfilePage = () => {
               </Badge>
             </div>
             <Separator />
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-islamic-gold-600">{stats.totalDebates}</div>
+            
+            {/* إحصائيات المناظرات */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{stats.totalDebates}</div>
                 <div className="text-xs text-muted-foreground">إجمالي المناظرات</div>
               </div>
-              <div>
+              <div className="bg-green-50 p-3 rounded-lg">
                 <div className="text-2xl font-bold text-green-600">{stats.completedDebates}</div>
                 <div className="text-xs text-muted-foreground">مناظرات مكتملة</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-blue-600">{stats.publishedDebates}</div>
+              <div className="bg-purple-50 p-3 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{stats.publicDebates}</div>
                 <div className="text-xs text-muted-foreground">مناظرات عامة</div>
+              </div>
+              <div className="bg-orange-50 p-3 rounded-lg">
+                <div className="text-2xl font-bold text-orange-600">{stats.privateDebates}</div>
+                <div className="text-xs text-muted-foreground">مناظرات خاصة</div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* المناظرات المنشورة */}
+        {/* المناظرات المحفوظة */}
         <Card className="islamic-card">
           <CardHeader>
             <CardTitle className="flex items-center space-x-reverse space-x-2">
               <Trophy className="h-5 w-5" />
-              <span>مناظراتي</span>
+              <span>مناظراتي المحفوظة</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {publishedDebates.length === 0 ? (
               <div className="text-center py-8">
                 <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">لم تقم بنشر أي مناظرات بعد</p>
+                <p className="text-muted-foreground">لم تقم بحفظ أي مناظرات بعد</p>
                 <Button
                   onClick={() => navigate('/dashboard')}
                   className="mt-4"
@@ -194,21 +228,50 @@ const ProfilePage = () => {
                         <Badge variant="outline" className="font-mono">
                           {debate.code}
                         </Badge>
-                        {debate.opponent && (
-                          <Badge variant="secondary">مكتملة</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-reverse space-x-2">
-                        <Switch
-                          checked={debate.isPublic}
-                          onCheckedChange={() => toggleDebateVisibility(debate.code)}
-                        />
-                        {debate.isPublic ? (
-                          <Eye className="h-4 w-4 text-green-600" />
+                        {debate.opponent ? (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            مكتملة
+                          </Badge>
                         ) : (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          <Badge variant="destructive">في الانتظار</Badge>
+                        )}
+                        {debate.isPublic ? (
+                          <Badge variant="default" className="bg-blue-100 text-blue-800">
+                            <Globe className="h-3 w-3 ml-1" />
+                            عامة
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-gray-100 text-gray-800">
+                            <Lock className="h-3 w-3 ml-1" />
+                            خاصة
+                          </Badge>
                         )}
                       </div>
+                      
+                      {/* قائمة خيارات النشر */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => publishDebate(debate.code, true)}
+                            className="flex items-center space-x-reverse space-x-2"
+                          >
+                            <Globe className="h-4 w-4" />
+                            <span>نشر كمناظرة عامة</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => publishDebate(debate.code, false)}
+                            className="flex items-center space-x-reverse space-x-2"
+                          >
+                            <Lock className="h-4 w-4" />
+                            <span>جعل المناظرة خاصة</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -216,50 +279,44 @@ const ProfilePage = () => {
                         <span className="text-muted-foreground">المنشئ: </span>
                         <span className="font-medium">{debate.creator} ({debate.creatorReligion})</span>
                       </div>
-                      {debate.opponent && (
+                      {debate.opponent ? (
                         <div>
                           <span className="text-muted-foreground">المناظر: </span>
                           <span className="font-medium">{debate.opponent} ({debate.opponentReligion})</span>
                         </div>
+                      ) : (
+                        <div className="text-muted-foreground">في انتظار مناظر...</div>
                       )}
                     </div>
 
-                    <div className="flex items-center space-x-reverse space-x-4 text-xs text-muted-foreground">
-                      <div className="flex items-center space-x-reverse space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{debate.settings.roundTime} دقيقة/جولة</span>
-                      </div>
-                      <div>
-                        <span>{debate.settings.roundCount} جولات</span>
-                      </div>
-                      <div>
-                        <span>{debate.isPublic ? 'عامة' : 'خاصة'}</span>
+                    {/* تفاصيل المناظرة */}
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div className="flex items-center space-x-reverse space-x-1">
+                          <Clock className="h-3 w-3" />
+                          <span>التحضير: {debate.settings.preparationTime} دقيقة</span>
+                        </div>
+                        <div className="flex items-center space-x-reverse space-x-1">
+                          <Clock className="h-3 w-3" />
+                          <span>الجولة: {debate.settings.roundTime} دقيقة</span>
+                        </div>
+                        <div>
+                          <span>الجولات: {debate.settings.roundCount}</span>
+                        </div>
+                        <div>
+                          <span>النهاية: {debate.settings.finalTime} دقيقة</span>
+                        </div>
+                        {debate.settings.autoMic && (
+                          <div className="col-span-2">
+                            <span className="text-green-600">• ميكروفون تلقائي</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* معلومات إضافية */}
-        <Card className="islamic-card">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-2">
-              <h3 className="font-medium text-islamic-gold-800 dark:text-islamic-gold-200">
-                إدارة المناظرات
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                • يمكنك جعل مناظراتك عامة ليراها الآخرون
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • المناظرات العامة تظهر في صفحة المناظرات العامة
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • يمكنك التحكم في خصوصية كل مناظرة على حدة
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

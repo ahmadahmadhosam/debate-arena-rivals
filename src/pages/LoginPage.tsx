@@ -1,187 +1,226 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { userDB } from '@/services/userDatabase';
 
-type Religion = 'سني' | 'شيعي';
-type AuthMode = 'signin' | 'signup';
-
 const LoginPage = () => {
-  const [selectedReligion, setSelectedReligion] = useState<Religion | null>(null);
-  const [authMode, setAuthMode] = useState<AuthMode>('signin');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerUsername, setRegisterUsername] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [religion, setReligion] = useState<'سني' | 'شيعي'>('سني');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleAuth = () => {
-    setError('');
+  // التحقق من وجود مستخدم مسجل دخول عند تحميل الصفحة
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        if (userData.isAuthenticated) {
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        localStorage.removeItem('user');
+      }
+    }
+  }, [navigate]);
 
-    if (!selectedReligion || !username || !password) {
-      setError('يرجى ملء جميع الحقول واختيار المذهب');
+  const handleLogin = async () => {
+    if (!loginUsername.trim() || !loginPassword.trim()) {
+      alert('يرجى ملء جميع الحقول');
       return;
     }
 
-    if (authMode === 'signup') {
-      if (password !== confirmPassword) {
-        setError('كلمات المرور غير متطابقة');
-        return;
-      }
-
-      // إنشاء حساب جديد
-      const success = userDB.registerUser(username, password, selectedReligion);
-      if (!success) {
-        setError('اسم المستخدم موجود بالفعل');
-        return;
-      }
-
-      // تسجيل الدخول التلقائي بعد التسجيل
-      const user = userDB.authenticateUser(username, password);
+    setIsLoading(true);
+    
+    // محاكاة تأخير الشبكة
+    setTimeout(() => {
+      const user = userDB.authenticateUser(loginUsername.trim(), loginPassword);
+      
       if (user) {
         localStorage.setItem('user', JSON.stringify(user));
         navigate('/dashboard');
+      } else {
+        alert('اسم المستخدم أو كلمة المرور غير صحيحة');
       }
-    } else {
-      // تسجيل الدخول
-      const user = userDB.authenticateUser(username, password);
-      if (!user) {
-        setError('اسم المستخدم أو كلمة المرور غير صحيحة');
-        return;
-      }
+      
+      setIsLoading(false);
+    }, 1000);
+  };
 
-      localStorage.setItem('user', JSON.stringify(user));
-      navigate('/dashboard');
+  const handleRegister = async () => {
+    if (!registerUsername.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
+      alert('يرجى ملء جميع الحقول');
+      return;
     }
+
+    if (registerPassword !== confirmPassword) {
+      alert('كلمة المرور غير متطابقة');
+      return;
+    }
+
+    if (registerPassword.length < 4) {
+      alert('كلمة المرور يجب أن تكون 4 أحرف على الأقل');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    setTimeout(() => {
+      const success = userDB.registerUser(registerUsername.trim(), registerPassword, religion);
+      
+      if (success) {
+        const user = {
+          username: registerUsername.trim(),
+          religion,
+          isAuthenticated: true
+        };
+        localStorage.setItem('user', JSON.stringify(user));
+        navigate('/dashboard');
+      } else {
+        alert('اسم المستخدم موجود بالفعل');
+      }
+      
+      setIsLoading(false);
+    }, 1000);
   };
 
   return (
-    <div className="min-h-screen bg-islamic-gradient flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <Card className="islamic-card shadow-2xl">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-islamic-gold-500 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">🕌</span>
-            </div>
-            <CardTitle className="text-2xl font-bold text-islamic-gold-800 dark:text-islamic-gold-200">
-              أرينا المناظرة
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-islamic-gradient rounded-full mx-auto mb-4 flex items-center justify-center">
+            <span className="text-white font-bold text-2xl">م</span>
+          </div>
+          <h1 className="text-3xl font-bold text-islamic-gold-800 dark:text-islamic-gold-200 mb-2">
+            منصة المناظرات الإسلامية
+          </h1>
+          <p className="text-muted-foreground">
+            منصة للحوار البناء بين المذاهب الإسلامية
+          </p>
+        </div>
+
+        <Card className="islamic-card shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-center text-islamic-gold-600">
+              مرحباً بك
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              منصة المناظرات الإسلامية
-            </p>
           </CardHeader>
-
-          <CardContent className="space-y-6">
-            {/* رسالة الخطأ */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-
-            {/* اختيار المذهب */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium">اختر المذهب:</label>
-              <div className="grid grid-cols-2 gap-3">
-                {(['سني', 'شيعي'] as Religion[]).map((religion) => (
-                  <Button
-                    key={religion}
-                    variant={selectedReligion === religion ? "default" : "outline"}
-                    onClick={() => setSelectedReligion(religion)}
-                    className={`h-12 ${
-                      selectedReligion === religion 
-                        ? 'bg-islamic-gold-500 hover:bg-islamic-gold-600 text-white' 
-                        : 'border-islamic-gold-300 hover:bg-islamic-gold-50'
-                    }`}
-                  >
-                    {religion}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* أزرار تبديل نوع التسجيل */}
-            <div className="flex rounded-lg bg-muted p-1">
-              <Button
-                variant={authMode === 'signin' ? 'default' : 'ghost'}
-                onClick={() => setAuthMode('signin')}
-                className="flex-1 h-8"
-              >
-                تسجيل دخول
-              </Button>
-              <Button
-                variant={authMode === 'signup' ? 'default' : 'ghost'}
-                onClick={() => setAuthMode('signup')}
-                className="flex-1 h-8"
-              >
-                إنشاء حساب
-              </Button>
-            </div>
-
-            {/* حقول النموذج */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">اسم المستخدم:</label>
-                <Input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="أدخل اسم المستخدم"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">كلمة المرور:</label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="أدخل كلمة المرور"
-                  className="mt-1"
-                />
-              </div>
-
-              {authMode === 'signup' && (
-                <div>
-                  <label className="text-sm font-medium">تأكيد كلمة المرور:</label>
+          <CardContent>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">تسجيل الدخول</TabsTrigger>
+                <TabsTrigger value="register">إنشاء حساب</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login" className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-username">اسم المستخدم</Label>
                   <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="أعد إدخال كلمة المرور"
-                    className="mt-1"
+                    id="login-username"
+                    type="text"
+                    placeholder="أدخل اسم المستخدم"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
                   />
                 </div>
-              )}
-            </div>
-
-            {/* زر الدخول */}
-            <Button
-              onClick={handleAuth}
-              className="w-full islamic-button h-12 text-lg"
-              disabled={!selectedReligion || !username || !password}
-            >
-              {authMode === 'signin' ? 'دخول' : 'إنشاء حساب'}
-            </Button>
-
-            {/* معلومات إضافية */}
-            {selectedReligion && (
-              <div className="text-center">
-                <Badge variant="secondary" className="bg-islamic-gold-100 text-islamic-gold-800">
-                  مذهب: {selectedReligion}
-                </Badge>
-              </div>
-            )}
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">كلمة المرور</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="أدخل كلمة المرور"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                  />
+                </div>
+                <Button 
+                  onClick={handleLogin} 
+                  className="w-full bg-islamic-gradient hover:opacity-90"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                </Button>
+              </TabsContent>
+              
+              <TabsContent value="register" className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-username">اسم المستخدم</Label>
+                  <Input
+                    id="register-username"
+                    type="text"
+                    placeholder="اختر اسم المستخدم"
+                    value={registerUsername}
+                    onChange={(e) => setRegisterUsername(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label>المذهب</Label>
+                  <RadioGroup 
+                    value={religion} 
+                    onValueChange={(value: 'سني' | 'شيعي') => setReligion(value)}
+                    className="flex space-x-reverse space-x-6"
+                  >
+                    <div className="flex items-center space-x-reverse space-x-2">
+                      <RadioGroupItem value="سني" id="sunni" />
+                      <Label htmlFor="sunni">سني</Label>
+                    </div>
+                    <div className="flex items-center space-x-reverse space-x-2">
+                      <RadioGroupItem value="شيعي" id="shia" />
+                      <Label htmlFor="shia">شيعي</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">كلمة المرور</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    placeholder="أدخل كلمة المرور"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">تأكيد كلمة المرور</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="أعد إدخال كلمة المرور"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
+                  />
+                </div>
+                
+                <Button 
+                  onClick={handleRegister} 
+                  className="w-full bg-islamic-blue-500 hover:bg-islamic-blue-600"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب'}
+                </Button>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6 text-white text-sm">
-          <p>منصة للحوار الحضاري والمناظرة الإسلامية</p>
+        <div className="text-center mt-6 text-sm text-muted-foreground">
+          <p>منصة آمنة للحوار الهادف والمثمر</p>
         </div>
       </div>
     </div>

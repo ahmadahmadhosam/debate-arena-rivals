@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, Search, Users, Clock, Trophy, Eye } from 'lucide-react';
+import { ArrowLeft, Users, Clock, Trophy, Eye, Globe, Mic, MicOff } from 'lucide-react';
 
 interface PublishedDebate {
   code: string;
@@ -21,23 +20,18 @@ interface PublishedDebate {
     roundTime: number;
     roundCount: number;
     finalTime: number;
+    autoMic?: boolean;
   };
 }
 
 const PublicDebatesPage = () => {
   const [publicDebates, setPublicDebates] = useState<PublishedDebate[]>([]);
-  const [filteredDebates, setFilteredDebates] = useState<PublishedDebate[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'completed' | 'waiting'>('all');
   const navigate = useNavigate();
 
   useEffect(() => {
     loadPublicDebates();
   }, []);
-
-  useEffect(() => {
-    filterDebates();
-  }, [searchTerm, filterType, publicDebates]);
 
   const loadPublicDebates = () => {
     const debates = localStorage.getItem('publishedDebates');
@@ -46,31 +40,23 @@ const PublicDebatesPage = () => {
     setPublicDebates(publicOnly);
   };
 
-  const filterDebates = () => {
+  const getFilteredDebates = () => {
     let filtered = publicDebates;
 
-    // فلترة حسب النوع
     if (filterType === 'completed') {
       filtered = filtered.filter(debate => debate.opponent);
     } else if (filterType === 'waiting') {
       filtered = filtered.filter(debate => !debate.opponent);
     }
 
-    // فلترة حسب البحث
-    if (searchTerm) {
-      filtered = filtered.filter(debate => 
-        debate.creator.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        debate.opponent?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        debate.code.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredDebates(filtered);
+    return filtered;
   };
 
   const viewDebate = (code: string) => {
     navigate(`/debate/${code}`);
   };
+
+  const filteredDebates = getFilteredDebates();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800">
@@ -94,46 +80,39 @@ const PublicDebatesPage = () => {
               </p>
             </div>
           </div>
+          <div className="flex items-center space-x-reverse space-x-2">
+            <Globe className="h-5 w-5 text-islamic-gold-600" />
+            <span className="text-sm font-medium">{publicDebates.length} مناظرة عامة</span>
+          </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto p-4 space-y-6">
-        {/* شريط البحث والفلترة */}
+        {/* شريط الفلترة */}
         <Card className="islamic-card">
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="البحث عن مناظرة أو مناظر..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
-              <div className="flex space-x-reverse space-x-2">
-                <Button
-                  variant={filterType === 'all' ? 'default' : 'outline'}
-                  onClick={() => setFilterType('all')}
-                  size="sm"
-                >
-                  الكل ({publicDebates.length})
-                </Button>
-                <Button
-                  variant={filterType === 'completed' ? 'default' : 'outline'}
-                  onClick={() => setFilterType('completed')}
-                  size="sm"
-                >
-                  مكتملة ({publicDebates.filter(d => d.opponent).length})
-                </Button>
-                <Button
-                  variant={filterType === 'waiting' ? 'default' : 'outline'}
-                  onClick={() => setFilterType('waiting')}
-                  size="sm"
-                >
-                  في الانتظار ({publicDebates.filter(d => !d.opponent).length})
-                </Button>
-              </div>
+            <div className="flex justify-center space-x-reverse space-x-4">
+              <Button
+                variant={filterType === 'all' ? 'default' : 'outline'}
+                onClick={() => setFilterType('all')}
+                size="sm"
+              >
+                الكل ({publicDebates.length})
+              </Button>
+              <Button
+                variant={filterType === 'completed' ? 'default' : 'outline'}
+                onClick={() => setFilterType('completed')}
+                size="sm"
+              >
+                مكتملة ({publicDebates.filter(d => d.opponent).length})
+              </Button>
+              <Button
+                variant={filterType === 'waiting' ? 'default' : 'outline'}
+                onClick={() => setFilterType('waiting')}
+                size="sm"
+              >
+                في الانتظار ({publicDebates.filter(d => !d.opponent).length})
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -145,7 +124,7 @@ const PublicDebatesPage = () => {
               <div className="text-center py-8">
                 <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-2">
-                  {searchTerm || filterType !== 'all' 
+                  {filterType !== 'all' 
                     ? 'لم يتم العثور على مناظرات مطابقة' 
                     : 'لا توجد مناظرات عامة متاحة حالياً'}
                 </p>
@@ -168,9 +147,11 @@ const PublicDebatesPage = () => {
                       {debate.code}
                     </Badge>
                     <div className="flex items-center space-x-reverse space-x-1">
-                      <Eye className="h-4 w-4 text-green-600" />
+                      <Globe className="h-4 w-4 text-blue-600" />
                       {debate.opponent ? (
-                        <Badge variant="secondary">مكتملة</Badge>
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          مكتملة
+                        </Badge>
                       ) : (
                         <Badge variant="destructive">في الانتظار</Badge>
                       )}
@@ -202,18 +183,45 @@ const PublicDebatesPage = () => {
                     )}
                   </div>
 
-                  <div className="bg-muted/50 p-3 rounded-lg text-xs space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span>وقت الجولة:</span>
-                      <span className="font-medium">{debate.settings.roundTime} دقيقة</span>
+                  {/* تفاصيل المناظرة المحسنة */}
+                  <div className="bg-muted/50 p-3 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center space-x-reverse space-x-1">
+                        <Clock className="h-3 w-3 text-blue-500" />
+                        <span>التحضير: {debate.settings.preparationTime} دقيقة</span>
+                      </div>
+                      <div className="flex items-center space-x-reverse space-x-1">
+                        <Clock className="h-3 w-3 text-green-500" />
+                        <span>الجولة: {debate.settings.roundTime} دقيقة</span>
+                      </div>
+                      <div className="flex items-center space-x-reverse space-x-1">
+                        <Trophy className="h-3 w-3 text-purple-500" />
+                        <span>الجولات: {debate.settings.roundCount}</span>
+                      </div>
+                      <div className="flex items-center space-x-reverse space-x-1">
+                        <Clock className="h-3 w-3 text-orange-500" />
+                        <span>النهاية: {debate.settings.finalTime} دقيقة</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>عدد الجولات:</span>
-                      <span className="font-medium">{debate.settings.roundCount} جولات</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>التحضير:</span>
-                      <span className="font-medium">{debate.settings.preparationTime} دقيقة</span>
+                    
+                    {/* ميزات إضافية */}
+                    <div className="flex items-center justify-between pt-1 border-t border-muted">
+                      <div className="flex items-center space-x-reverse space-x-1">
+                        {debate.settings.autoMic ? (
+                          <>
+                            <Mic className="h-3 w-3 text-green-600" />
+                            <span className="text-xs text-green-600">ميكروفون تلقائي</span>
+                          </>
+                        ) : (
+                          <>
+                            <MicOff className="h-3 w-3 text-gray-500" />
+                            <span className="text-xs text-gray-500">ميكروفون يدوي</span>
+                          </>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(debate.publishedAt).toLocaleDateString('ar')}
+                      </span>
                     </div>
                   </div>
 
