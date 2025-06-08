@@ -3,30 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Timer, Users, Settings, LogOut, Moon, Sun, User } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Shuffle, BarChart } from 'lucide-react';
 import { debateManager } from '@/services/debateManager';
 
 interface User {
   username: string;
   religion: string;
-  isAuthenticated: boolean;
 }
 
 const DashboardPage = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [debateCode, setDebateCode] = useState('');
+  const [privateCode, setPrivateCode] = useState('');
   const [preparationTime, setPreparationTime] = useState('1');
   const [roundTime, setRoundTime] = useState('5');
   const [roundCount, setRoundCount] = useState('5');
   const [finalTime, setFinalTime] = useState('5');
-  const [isDark, setIsDark] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [error, setError] = useState('');
-  const [isCreatingDebate, setIsCreatingDebate] = useState(false);
-  const navigate = useNavigate();
+  const [autoMic, setAutoMic] = useState(true);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -35,417 +32,288 @@ const DashboardPage = () => {
     } else {
       navigate('/');
     }
-
-    // تنظيف المناظرات القديمة
-    debateManager.cleanupOldDebates();
   }, [navigate]);
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('fromRandomQueue');
-    localStorage.removeItem('currentDebate');
-    debateManager.clearCurrentSession();
-    navigate('/');
-  };
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
-  };
-
-  const generateCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-  };
-
-  const startPrivateDebate = async () => {
-    if (isCreatingDebate) return;
-    
-    setError('');
-    setIsCreatingDebate(true);
-    
-    try {
-      const settings = {
-        preparationTime: parseInt(preparationTime),
-        roundTime: parseInt(roundTime),
-        roundCount: parseInt(roundCount),
-        finalTime: parseInt(finalTime)
-      };
-
-      const code = debateManager.createPrivateDebate(
-        user?.username || 'مجهول',
-        user?.religion || 'غير محدد',
-        settings
-      );
-
-      if (!code) {
-        setError('حدث خطأ في إنشاء المناظرة. حاول مرة أخرى.');
-        return;
-      }
-
-      localStorage.removeItem('fromRandomQueue');
-      console.log(`انتقال إلى المناظرة بالكود: ${code}`);
-      navigate(`/debate/${code}`);
-    } catch (error) {
-      console.error('خطأ في إنشاء المناظرة:', error);
-      setError('حدث خطأ في إنشاء المناظرة. حاول مرة أخرى.');
-    } finally {
-      setIsCreatingDebate(false);
-    }
-  };
-
-  const joinPrivateDebate = () => {
-    setError('');
-    
-    if (!debateCode.trim()) {
-      setError('يرجى إدخال كود المناظرة');
-      return;
-    }
-    
-    if (localStorage.getItem('fromRandomQueue') === 'true') {
-      setError('لا يمكنك دخول مناظرة خاصة بعد دخول الطابور العشوائي');
+  const handleJoinPrivateDebate = () => {
+    if (!privateCode.trim()) {
+      alert('يرجى إدخال كود المناظرة');
       return;
     }
 
-    const normalizedCode = debateCode.toUpperCase().trim();
-    console.log(`محاولة البحث عن المناظرة بالكود: ${normalizedCode}`);
-    
-    const debate = debateManager.getDebate(normalizedCode);
-    console.log('نتيجة البحث:', debate);
+    const debate = debateManager.getDebate(privateCode.trim().toUpperCase());
     
     if (!debate) {
-      setError('كود المناظرة غير صحيح أو المناظرة غير موجودة');
+      alert('كود المناظرة غير صحيح');
+      setPrivateCode('');
       return;
     }
 
     if (debate.opponent) {
-      setError('المناظرة مكتملة بالفعل');
+      alert('هذه المناظرة ممتلئة بالفعل');
+      setPrivateCode('');
       return;
     }
 
     if (debate.creator === user?.username) {
-      setError('لا يمكنك الدخول لمناظرتك الخاصة');
+      alert('لا يمكنك الدخول لمناظرة أنشأتها أنت');
+      setPrivateCode('');
       return;
     }
 
     if (debate.creatorReligion === user?.religion) {
-      setError('لا يمكن للأشخاص من نفس المذهب دخول مناظرة واحدة');
+      alert('لا يمكنك مناظرة شخص من نفس المذهب');
+      setPrivateCode('');
       return;
     }
 
-    const joinedDebate = debateManager.joinPrivateDebate(
-      normalizedCode,
-      user?.username || 'مجهول',
-      user?.religion || 'غير محدد'
+    const joinResult = debateManager.joinPrivateDebate(
+      privateCode.trim().toUpperCase(),
+      user?.username || '',
+      user?.religion || ''
     );
 
-    if (!joinedDebate) {
-      setError('فشل في الانضمام للمناظرة');
+    if (joinResult) {
+      console.log('تم الانضمام بنجاح للمناظرة:', privateCode);
+      localStorage.removeItem('fromRandomQueue');
+      navigate(`/debate/${privateCode.trim().toUpperCase()}`);
+    } else {
+      alert('فشل في الانضمام للمناظرة');
+      setPrivateCode('');
+    }
+  };
+
+  const handleCreatePrivateDebate = () => {
+    if (!preparationTime || !roundTime || !roundCount || !finalTime) {
+      alert('يرجى ملء جميع الحقول');
       return;
     }
 
-    localStorage.removeItem('fromRandomQueue');
-    navigate(`/debate/${normalizedCode}`);
+    const settings = {
+      preparationTime: Number(preparationTime),
+      roundTime: Number(roundTime),
+      roundCount: Number(roundCount),
+      finalTime: Number(finalTime),
+      autoMic: autoMic // إضافة خيار الميكروفون التلقائي
+    };
+
+    const code = debateManager.createPrivateDebate(
+      user?.username || '',
+      user?.religion || '',
+      settings
+    );
+
+    if (code) {
+      console.log('انتقال إلى المناظرة بالكود:', code);
+      localStorage.removeItem('fromRandomQueue');
+      navigate(`/debate/${code}`);
+    } else {
+      alert('فشل في إنشاء المناظرة');
+    }
   };
 
-  const startRandomDebate = () => {
-    const debateSettings = {
-      code: 'RANDOM',
-      preparationTime: parseInt(preparationTime),
-      roundTime: parseInt(roundTime),
-      roundCount: parseInt(roundCount),
-      finalTime: parseInt(finalTime),
-      isPrivate: false,
-      creator: user?.username || 'مجهول',
-      creatorReligion: user?.religion || 'غير محدد'
+  const handleStartRandomDebate = () => {
+    const settings = {
+      preparationTime: 1,
+      roundTime: 5,
+      roundCount: 5,
+      finalTime: 5,
+      autoMic: true
     };
-    
+
+    localStorage.setItem('currentDebate', JSON.stringify(settings));
     localStorage.setItem('fromRandomQueue', 'true');
-    localStorage.setItem('currentDebate', JSON.stringify(debateSettings));
     navigate('/debate/random');
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-islamic-gold-600"></div>
-      </div>
-    );
-  }
+  const debateStats = debateManager.getDebateStats();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800">
-      {/* الشريط العلوي */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center space-x-reverse space-x-4">
-            <div className="w-10 h-10 bg-islamic-gradient rounded-full flex items-center justify-center">
-              <span className="text-white font-bold">🕌</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-islamic-gold-800 dark:text-islamic-gold-200">
-                أرينا المناظرة
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                أهلاً {user.username}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-reverse space-x-2">
-            <Badge variant="secondary" className="bg-islamic-gold-100 text-islamic-gold-800">
-              {user.religion}
-            </Badge>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/profile')}
-            >
-              <User className="h-4 w-4" />
+        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+          <h1 className="text-lg font-bold">لوحة التحكم</h1>
+          <div className="flex items-center space-x-2">
+            <Button variant="secondary" size="sm" onClick={() => navigate('/profile')}>
+              {user?.username} ({user?.religion})
             </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/public-debates')}
-            >
-              <Users className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => navigate('/public-debates')}>
+              مناظرات عامة
             </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-
-            <Dialog open={showSettings} onOpenChange={setShowSettings}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>الإعدادات</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Button
-                    variant="destructive"
-                    onClick={logout}
-                    className="w-full justify-start"
-                  >
-                    <LogOut className="h-4 w-4 ml-2" />
-                    تسجيل خروج
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
       </div>
 
-      {/* المحتوى الرئيسي */}
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        {/* رسائل الخطأ */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
-
-        {/* إعدادات المناظرة */}
-        <Card className="islamic-card">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-reverse space-x-2">
-              <Timer className="h-5 w-5" />
-              <span>إعدادات المناظرة</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">وقت التحضير (دقيقة):</label>
-              <Select value={preparationTime} onValueChange={setPreparationTime}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 60 }, (_, i) => i + 1).map((time) => (
-                    <SelectItem key={time} value={time.toString()}>
-                      {time} دقيقة
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">وقت كل جولة (دقيقة):</label>
-              <Select value={roundTime} onValueChange={setRoundTime}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 60 }, (_, i) => i + 1).map((time) => (
-                    <SelectItem key={time} value={time.toString()}>
-                      {time} دقيقة
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">عدد الجولات:</label>
-              <Select value={roundCount} onValueChange={setRoundCount}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 10 }, (_, i) => i + 1).map((count) => (
-                    <SelectItem key={count} value={count.toString()}>
-                      {count} جولات
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">وقت النقاش النهائي (دقيقة):</label>
-              <Select value={finalTime} onValueChange={setFinalTime}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 60 }, (_, i) => i + 1).map((time) => (
-                    <SelectItem key={time} value={time.toString()}>
-                      {time} دقيقة
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* خيارات المناظرة */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* المناظرة الخاصة */}
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* بطاقة المناظرات الخاصة */}
           <Card className="islamic-card">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-reverse space-x-2">
-                <Users className="h-5 w-5" />
-                <span>مناظرة خاصة</span>
+              <CardTitle className="text-center text-islamic-gold-600">
+                المناظرات الخاصة
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                أنشئ مناظرة خاصة وشارك الكود مع المناظر
-              </p>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">كود المناظرة للدخول:</label>
-                <Input
-                  value={debateCode}
-                  onChange={(e) => setDebateCode(e.target.value.toUpperCase())}
-                  placeholder="أدخل الكود"
-                  className="text-center text-lg font-mono"
-                  maxLength={6}
-                />
+            <CardContent className="space-y-6">
+              {/* قسم الدخول بالكود */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-islamic-blue-600">الدخول بالكود</h3>
+                <div className="flex space-x-reverse space-x-2">
+                  <Input
+                    type="text"
+                    placeholder="أدخل كود المناظرة"
+                    value={privateCode}
+                    onChange={(e) => setPrivateCode(e.target.value.toUpperCase())}
+                    className="flex-1"
+                    maxLength={6}
+                  />
+                  <Button 
+                    onClick={handleJoinPrivateDebate}
+                    className="bg-islamic-blue-500 hover:bg-islamic-blue-600"
+                  >
+                    دخول
+                  </Button>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Button
-                  onClick={startPrivateDebate}
-                  className="w-full islamic-button"
-                  disabled={isCreatingDebate}
+              <Separator />
+
+              {/* قسم إنشاء مناظرة خاصة */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-islamic-gold-600">إنشاء مناظرة خاصة</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="prep-time">وقت التحضير (دقيقة)</Label>
+                    <Select value={preparationTime} onValueChange={setPreparationTime}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الوقت" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 دقيقة</SelectItem>
+                        <SelectItem value="2">2 دقيقة</SelectItem>
+                        <SelectItem value="3">3 دقيقة</SelectItem>
+                        <SelectItem value="5">5 دقيقة</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="round-time">وقت الجولة (دقيقة)</Label>
+                    <Select value={roundTime} onValueChange={setRoundTime}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الوقت" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 دقيقة</SelectItem>
+                        <SelectItem value="5">5 دقيقة</SelectItem>
+                        <SelectItem value="7">7 دقيقة</SelectItem>
+                        <SelectItem value="10">10 دقيقة</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="round-count">عدد الجولات</Label>
+                    <Select value={roundCount} onValueChange={setRoundCount}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر العدد" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">جولة واحدة</SelectItem>
+                        <SelectItem value="3">3 جولات</SelectItem>
+                        <SelectItem value="5">5 جولات</SelectItem>
+                        <SelectItem value="7">7 جولات</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="final-time">وقت النهاية (دقيقة)</Label>
+                    <Select value={finalTime} onValueChange={setFinalTime}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر الوقت" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 دقيقة</SelectItem>
+                        <SelectItem value="5">5 دقيقة</SelectItem>
+                        <SelectItem value="7">7 دقيقة</SelectItem>
+                        <SelectItem value="10">10 دقيقة</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* خيار الميكروفون التلقائي */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="auto-mic">تشغيل الميكروفون تلقائياً</Label>
+                  <Switch
+                    id="auto-mic"
+                    checked={autoMic}
+                    onCheckedChange={setAutoMic}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleCreatePrivateDebate}
+                  className="w-full bg-islamic-gradient hover:opacity-90"
                 >
-                  {isCreatingDebate ? 'جاري الإنشاء...' : 'إنشاء مناظرة خاصة'}
+                  إنشاء مناظرة خاصة
                 </Button>
-                {debateCode.trim() && (
-                  <Button
-                    onClick={joinPrivateDebate}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    دخول بالكود: {debateCode}
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* المناظرة العشوائية */}
+          {/* بطاقة المناظرات العشوائية */}
           <Card className="islamic-card">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-reverse space-x-2">
-                <Clock className="h-5 w-5" />
-                <span>مناظرة عشوائية</span>
+              <CardTitle className="text-center text-islamic-blue-600">
+                المناظرات العشوائية
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                انضم لمناظرة عشوائية مع مناظر من المذهب المختلف
-              </p>
-
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span>وقت التحضير:</span>
-                    <span className="font-medium">{preparationTime} دقيقة</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>وقت الجولة:</span>
-                    <span className="font-medium">{roundTime} دقيقة</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>عدد الجولات:</span>
-                    <span className="font-medium">{roundCount} جولات</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>وقت النهاية:</span>
-                    <span className="font-medium">{finalTime} دقيقة</span>
-                  </div>
+            <CardContent className="space-y-6">
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 bg-islamic-blue-100 rounded-full mx-auto flex items-center justify-center">
+                  <Shuffle className="h-10 w-10 text-islamic-blue-600" />
                 </div>
+                <p className="text-muted-foreground">
+                  ابدأ مناظرة مع مناظر عشوائي من المذهب المختلف
+                </p>
+                <Button 
+                  onClick={handleStartRandomDebate}
+                  className="w-full bg-islamic-blue-500 hover:bg-islamic-blue-600"
+                  size="lg"
+                >
+                  بدء مناظرة عشوائية
+                </Button>
               </div>
-
-              <Button
-                onClick={startRandomDebate}
-                className="w-full islamic-button"
-              >
-                بدء مناظرة عشوائية
-              </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* معلومات إضافية */}
-        <Card className="islamic-card">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-2">
-              <h3 className="font-medium text-islamic-gold-800 dark:text-islamic-gold-200">
-                قواعد المناظرة
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                • يجب إنشاء حساب مسجل قبل تسجيل الدخول
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • لا يمكن للأشخاص من نفس المذهب دخول مناظرة واحدة
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • لا يمكن دخول مناظرة خاصة بعد دخول الطابور العشوائي
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • المناظرات الخاصة تحتاج لمناظر حقيقي للبدء
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • يمكن إنهاء الجولة مبكراً فقط للشخص الذي عليه الدور
-              </p>
+        {/* إحصائيات للمطورين */}
+        <div className="mt-8 p-4 bg-muted rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-4 flex items-center space-x-reverse space-x-2">
+            <BarChart className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            <span>إحصائيات المناظرات</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold">{debateStats?.totalDebates}</div>
+              <div className="text-sm text-gray-500">إجمالي المناظرات</div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="text-center">
+              <div className="text-2xl font-bold">{debateStats?.activeDebates}</div>
+              <div className="text-sm text-gray-500">المناظرات النشطة</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">{debateStats?.waitingDebates}</div>
+              <div className="text-sm text-gray-500">المناظرات في الانتظار</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">{debateStats?.totalUsedCodes}</div>
+              <div className="text-sm text-gray-500">إجمالي الأكواد المستخدمة</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

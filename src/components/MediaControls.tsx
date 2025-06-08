@@ -7,7 +7,8 @@ import { Mic, MicOff, Camera, CameraOff } from 'lucide-react';
 interface MediaControlsProps {
   isMyTurn: boolean;
   autoMicControl?: boolean;
-  currentPhase?: 'waiting' | 'preparation' | 'debate' | 'final' | 'ended';
+  currentPhase?: 'waiting' | 'preparation' | 'choosing' | 'debate' | 'final' | 'ended';
+  canDisableAutoMic?: boolean;
   onMicToggle?: (enabled: boolean) => void;
   onCameraToggle?: (enabled: boolean) => void;
 }
@@ -16,17 +17,23 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   isMyTurn,
   autoMicControl = true,
   currentPhase = 'waiting',
+  canDisableAutoMic = true,
   onMicToggle,
   onCameraToggle
 }) => {
   const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
-  const [isAutoMicEnabled, setIsAutoMicEnabled] = useState(true);
+  const [isAutoMicEnabled, setIsAutoMicEnabled] = useState(autoMicControl);
   const [isAutoCameraEnabled, setIsAutoCameraEnabled] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [hasPermissions, setHasPermissions] = useState(false);
   const [permissionError, setPermissionError] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // تأمين الميكروفون التلقائي من الإعدادات
+  useEffect(() => {
+    setIsAutoMicEnabled(autoMicControl);
+  }, [autoMicControl]);
 
   // التحكم التلقائي في الميكروفون
   useEffect(() => {
@@ -49,8 +56,17 @@ const MediaControls: React.FC<MediaControlsProps> = ({
     try {
       setPermissionError('');
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: audio ? { echoCancellation: true, noiseSuppression: true } : false, 
-        video: video ? { width: 640, height: 480, facingMode: 'user' } : false 
+        audio: audio ? { 
+          echoCancellation: true, 
+          noiseSuppression: true,
+          autoGainControl: true
+        } : false, 
+        video: video ? { 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 }, 
+          facingMode: 'user',
+          frameRate: { ideal: 30 }
+        } : false 
       });
       
       setMediaStream(stream);
@@ -59,6 +75,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
       // ربط الفيديو بالعنصر المرجعي
       if (video && videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(console.error);
       }
       
       console.log('تم الحصول على إذن الوصول للميديا');
@@ -84,6 +101,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   };
 
   const toggleMic = async () => {
+    // منع التلاعب بالميكروفون أثناء المناظرة إذا كان تلقائياً
     if (isAutoMicEnabled && currentPhase === 'debate' && !isMyTurn) {
       return;
     }
@@ -125,6 +143,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
       if (videoRef.current) {
         if (newState) {
           videoRef.current.srcObject = mediaStream;
+          videoRef.current.play().catch(console.error);
         } else {
           videoRef.current.srcObject = null;
         }
@@ -137,7 +156,9 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   };
 
   const toggleAutoMic = () => {
-    setIsAutoMicEnabled(!isAutoMicEnabled);
+    if (canDisableAutoMic) {
+      setIsAutoMicEnabled(!isAutoMicEnabled);
+    }
   };
 
   const toggleAutoCamera = () => {
@@ -174,9 +195,12 @@ const MediaControls: React.FC<MediaControlsProps> = ({
               autoPlay
               muted
               playsInline
-              className="w-32 h-24 bg-gray-200 rounded-lg object-cover border-2 border-islamic-gold-300"
+              className="w-40 h-30 bg-gray-200 rounded-lg object-cover border-2 border-islamic-gold-300 shadow-lg"
             />
-            <div className="absolute top-1 right-1 bg-green-500 w-2 h-2 rounded-full"></div>
+            <div className="absolute top-2 right-2 bg-red-500 w-3 h-3 rounded-full animate-pulse"></div>
+            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+              مباشر
+            </div>
           </div>
         </div>
       )}
@@ -187,17 +211,17 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           onClick={toggleMic}
           variant={isMicEnabled ? "default" : "destructive"}
           size="lg"
-          className={`w-14 h-14 rounded-full ${
+          className={`w-16 h-16 rounded-full ${
             !canToggleMic 
               ? 'opacity-50 cursor-not-allowed' 
               : 'hover:scale-110'
-          } transition-all duration-200`}
+          } transition-all duration-200 shadow-lg`}
           disabled={!canToggleMic}
         >
           {isMicEnabled ? (
-            <Mic className="h-6 w-6" />
+            <Mic className="h-7 w-7" />
           ) : (
-            <MicOff className="h-6 w-6" />
+            <MicOff className="h-7 w-7" />
           )}
         </Button>
 
@@ -205,12 +229,12 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           onClick={toggleCamera}
           variant={isCameraEnabled ? "default" : "outline"}
           size="lg"
-          className="w-14 h-14 rounded-full hover:scale-110 transition-all duration-200"
+          className="w-16 h-16 rounded-full hover:scale-110 transition-all duration-200 shadow-lg"
         >
           {isCameraEnabled ? (
-            <Camera className="h-6 w-6" />
+            <Camera className="h-7 w-7" />
           ) : (
-            <CameraOff className="h-6 w-6" />
+            <CameraOff className="h-7 w-7" />
           )}
         </Button>
       </div>
@@ -235,6 +259,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           {currentPhase === 'final' && 'النقاش النهائي - الميكروفون مفتوح'}
           {currentPhase === 'debate' && (isMyTurn ? 'دورك للحديث' : 'انتظر دورك')}
           {currentPhase === 'waiting' && 'في الانتظار'}
+          {currentPhase === 'choosing' && 'جاري اختيار من سيبدأ'}
           {currentPhase === 'ended' && 'انتهت المناظرة'}
         </div>
         
@@ -243,15 +268,19 @@ const MediaControls: React.FC<MediaControlsProps> = ({
         )}
       </div>
 
-      {/* خيارات التحكم التلقائي */}
+      {/* خيارات التحكم */}
       <div className="bg-muted/50 p-4 rounded-lg space-y-3">
         <h4 className="text-sm font-medium text-center">خيارات التحكم</h4>
         
         <div className="flex items-center justify-between">
-          <span className="text-xs">تحكم تلقائي في الميكروفون</span>
+          <span className="text-xs">
+            تحكم تلقائي في الميكروفون
+            {!canDisableAutoMic && <span className="text-orange-600"> (مؤمن)</span>}
+          </span>
           <Switch
             checked={isAutoMicEnabled}
             onCheckedChange={toggleAutoMic}
+            disabled={!canDisableAutoMic}
           />
         </div>
 
@@ -265,7 +294,10 @@ const MediaControls: React.FC<MediaControlsProps> = ({
 
         {isAutoMicEnabled && (
           <div className="text-xs text-muted-foreground text-center mt-2">
-            الميكروفون مفتوح في وقت التحضير والنهاية، ومتحكم به حسب الدور في المناظرة
+            {canDisableAutoMic 
+              ? 'الميكروفون مفتوح في وقت التحضير والنهاية، ومتحكم به حسب الدور في المناظرة'
+              : 'الميكروفون التلقائي مؤمن من إعدادات المناظرة'
+            }
           </div>
         )}
       </div>
