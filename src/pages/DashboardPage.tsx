@@ -25,6 +25,13 @@ const DashboardPage = () => {
   const [roundCount, setRoundCount] = useState('5');
   const [finalTime, setFinalTime] = useState('5');
   const [autoMic, setAutoMic] = useState(true);
+  
+  // إعدادات المناظرة العشوائية
+  const [randomPreparationTime, setRandomPreparationTime] = useState('1');
+  const [randomRoundTime, setRandomRoundTime] = useState('5');
+  const [randomRoundCount, setRandomRoundCount] = useState('5');
+  const [randomFinalTime, setRandomFinalTime] = useState('5');
+  const [randomAutoMic, setRandomAutoMic] = useState(true);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -114,16 +121,28 @@ const DashboardPage = () => {
 
   const handleStartRandomDebate = () => {
     const settings = {
-      preparationTime: 1,
-      roundTime: 5,
-      roundCount: 5,
-      finalTime: 5,
-      autoMic: true
+      preparationTime: Number(randomPreparationTime),
+      roundTime: Number(randomRoundTime),
+      roundCount: Number(randomRoundCount),
+      finalTime: Number(randomFinalTime),
+      autoMic: randomAutoMic,
+      isRandom: true
     };
 
-    localStorage.setItem('currentDebate', JSON.stringify(settings));
-    localStorage.setItem('fromRandomQueue', 'true');
-    navigate('/debate/random');
+    // إنشاء مناظرة عشوائية جديدة
+    const code = debateManager.createRandomDebate(
+      user?.username || '',
+      user?.religion || '',
+      settings
+    );
+
+    if (code) {
+      localStorage.setItem('currentDebate', JSON.stringify(settings));
+      localStorage.setItem('fromRandomQueue', 'true');
+      navigate(`/debate/${code}`);
+    } else {
+      alert('فشل في إنشاء المناظرة العشوائية');
+    }
   };
 
   const handleLogout = () => {
@@ -167,7 +186,7 @@ const DashboardPage = () => {
       </div>
 
       <div className="max-w-6xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
           {/* بطاقة الدخول بالكود */}
           <Card className="islamic-card shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader className="bg-islamic-blue-50 dark:bg-islamic-blue-900/20">
@@ -301,7 +320,7 @@ const DashboardPage = () => {
           </Card>
 
           {/* بطاقة المناظرات العشوائية */}
-          <Card className="islamic-card shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <Card className="islamic-card shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-2 xl:col-span-1">
             <CardHeader className="bg-green-50 dark:bg-green-900/20">
               <CardTitle className="text-center text-green-600 flex items-center justify-center space-x-reverse space-x-2">
                 <Shuffle className="h-6 w-6" />
@@ -320,22 +339,77 @@ const DashboardPage = () => {
                   </p>
                 </div>
                 
-                <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
-                  <div className="flex justify-between">
-                    <span>وقت التحضير:</span>
-                    <span className="font-medium">1 دقيقة</span>
+                {/* إعدادات المناظرة العشوائية */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">وقت التحضير</Label>
+                    <Select value={randomPreparationTime} onValueChange={setRandomPreparationTime}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 دقيقة</SelectItem>
+                        <SelectItem value="2">2 دقيقة</SelectItem>
+                        <SelectItem value="3">3 دقيقة</SelectItem>
+                        <SelectItem value="5">5 دقيقة</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex justify-between">
-                    <span>وقت الجولة:</span>
-                    <span className="font-medium">5 دقائق</span>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">وقت الجولة</Label>
+                    <Select value={randomRoundTime} onValueChange={setRandomRoundTime}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 دقيقة</SelectItem>
+                        <SelectItem value="5">5 دقيقة</SelectItem>
+                        <SelectItem value="7">7 دقيقة</SelectItem>
+                        <SelectItem value="10">10 دقيقة</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex justify-between">
-                    <span>عدد الجولات:</span>
-                    <span className="font-medium">5 جولات</span>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">عدد الجولات</Label>
+                    <Select value={randomRoundCount} onValueChange={setRandomRoundCount}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">جولة واحدة</SelectItem>
+                        <SelectItem value="3">3 جولات</SelectItem>
+                        <SelectItem value="5">5 جولات</SelectItem>
+                        <SelectItem value="7">7 جولات</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex justify-between">
-                    <span>الميكروفون:</span>
-                    <span className="font-medium">تلقائي</span>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">وقت النهاية</Label>
+                    <Select value={randomFinalTime} onValueChange={setRandomFinalTime}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 دقيقة</SelectItem>
+                        <SelectItem value="5">5 دقيقة</SelectItem>
+                        <SelectItem value="7">7 دقيقة</SelectItem>
+                        <SelectItem value="10">10 دقيقة</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">تشغيل الميكروفون تلقائياً</Label>
+                    <Switch
+                      checked={randomAutoMic}
+                      onCheckedChange={setRandomAutoMic}
+                      className="scale-75"
+                    />
                   </div>
                 </div>
 

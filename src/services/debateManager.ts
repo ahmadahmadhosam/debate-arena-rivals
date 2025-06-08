@@ -9,8 +9,11 @@ interface DebateSession {
     roundTime: number;
     roundCount: number;
     finalTime: number;
+    autoMic?: boolean;
+    isRandom?: boolean;
   };
   isActive: boolean;
+  isRandom?: boolean;
   createdAt: Date;
 }
 
@@ -18,6 +21,7 @@ class DebateManager {
   private storageKey = 'activeDebates';
   private sessionKey = 'currentDebateSession';
   private usedCodesKey = 'usedDebateCodes';
+  private randomDebatesKey = 'randomDebates';
 
   // قائمة الأكواد المستخدمة
   getUsedCodes(): string[] {
@@ -50,12 +54,10 @@ class DebateManager {
     const maxAttempts = 100;
 
     do {
-      // توليد كود من 6 أحرف وأرقام
       code = Math.random().toString(36).substring(2, 8).toUpperCase();
       attempts++;
       
       if (attempts >= maxAttempts) {
-        // إذا فشل في إيجاد كود فريد، استخدم timestamp
         code = Date.now().toString(36).toUpperCase().substring(0, 6);
         break;
       }
@@ -72,6 +74,46 @@ class DebateManager {
 
   saveActiveDebates(debates: DebateSession[]): void {
     localStorage.setItem(this.storageKey, JSON.stringify(debates));
+  }
+
+  // إدارة المناظرات العشوائية
+  getRandomDebates(): DebateSession[] {
+    const debates = localStorage.getItem(this.randomDebatesKey);
+    return debates ? JSON.parse(debates) : [];
+  }
+
+  saveRandomDebates(debates: DebateSession[]): void {
+    localStorage.setItem(this.randomDebatesKey, JSON.stringify(debates));
+  }
+
+  createRandomDebate(creator: string, creatorReligion: string, settings: any): string | null {
+    try {
+      const code = this.generateUniqueCode();
+      
+      const newDebate: DebateSession = {
+        code,
+        creator,
+        creatorReligion,
+        settings: {
+          ...settings,
+          isRandom: true
+        },
+        isActive: false,
+        isRandom: true,
+        createdAt: new Date()
+      };
+
+      const randomDebates = this.getRandomDebates();
+      randomDebates.push(newDebate);
+      this.saveRandomDebates(randomDebates);
+      this.addUsedCode(code);
+      
+      console.log(`تم إنشاء مناظرة عشوائية بالكود: ${code}`);
+      return code;
+    } catch (error) {
+      console.error('خطأ في إنشاء المناظرة العشوائية:', error);
+      return null;
+    }
   }
 
   createPrivateDebate(creator: string, creatorReligion: string, settings: any): string | null {
@@ -146,11 +188,20 @@ class DebateManager {
 
   getDebate(code: string): DebateSession | null {
     try {
-      const debates = this.getActiveDebates();
       const normalizedCode = code.toUpperCase().trim();
-      const found = debates.find(debate => debate.code === normalizedCode) || null;
+      
+      // البحث في المناظرات الخاصة
+      const debates = this.getActiveDebates();
+      let found = debates.find(debate => debate.code === normalizedCode);
+      
+      // البحث في المناظرات العشوائية إذا لم توجد في الخاصة
+      if (!found) {
+        const randomDebates = this.getRandomDebates();
+        found = randomDebates.find(debate => debate.code === normalizedCode);
+      }
+      
       console.log(`البحث عن الكود ${normalizedCode}:`, found ? 'موجود' : 'غير موجود');
-      return found;
+      return found || null;
     } catch (error) {
       console.error('خطأ في البحث عن المناظرة:', error);
       return null;
@@ -172,6 +223,7 @@ class DebateManager {
 
   cleanupOldDebates(): void {
     const debates = this.getActiveDebates();
+    const randomDebates = this.getRandomDebates();
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
@@ -179,18 +231,25 @@ class DebateManager {
       new Date(debate.createdAt) > oneDayAgo
     );
 
+    const activeRandomDebates = randomDebates.filter(debate => 
+      new Date(debate.createdAt) > oneDayAgo
+    );
+
     this.saveActiveDebates(activeDebates);
+    this.saveRandomDebates(activeRandomDebates);
   }
 
   // إحصائيات للمطورين
   getDebateStats() {
     const debates = this.getActiveDebates();
+    const randomDebates = this.getRandomDebates();
     const usedCodes = this.getUsedCodes();
     
     return {
-      totalDebates: debates.length,
-      activeDebates: debates.filter(d => d.isActive).length,
-      waitingDebates: debates.filter(d => !d.isActive).length,
+      totalDebates: debates.length + randomDebates.length,
+      activeDebates: debates.filter(d => d.isActive).length + randomDebates.filter(d => d.isActive).length,
+      waitingDebates: debates.filter(d => !d.isActive).length + randomDebates.filter(d => !d.isActive).length,
+      randomDebates: randomDebates.length,
       totalUsedCodes: usedCodes.length
     };
   }

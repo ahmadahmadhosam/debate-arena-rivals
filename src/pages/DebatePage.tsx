@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import LanternAnimation from '@/components/LanternAnimation';
 import ClockTimer from '@/components/ClockTimer';
+import WaitingScreen from '@/components/WaitingScreen';
 import { debateManager } from '@/services/debateManager';
 
 interface User {
@@ -23,8 +24,10 @@ interface DebateSession {
     roundCount: number;
     finalTime: number;
     autoMic?: boolean;
+    isRandom?: boolean;
   };
   isActive: boolean;
+  isRandom?: boolean;
   createdAt: Date;
 }
 
@@ -95,8 +98,17 @@ const DebatePage = () => {
     setDebateData(debate);
     setDebateSettings(debate.settings);
     
+    // تحديد عنوان المناظرة بناءً على نوعها
+    if (debate.isRandom) {
+      setDebateTitle('مناظرة عشوائية');
+      setIsRandomDebate(true);
+    } else {
+      setDebateTitle('مناظرة خاصة');
+      setIsRandomDebate(false);
+    }
+    
     if (debate.opponent && debate.isActive) {
-      setCurrentPhase('preparation');
+      setCurrentPhase('selectStart');
       setPlayer1(debate.creator);
       setPlayer2(debate.opponent);
       setIsWaitingForOpponent(false);
@@ -157,26 +169,7 @@ const DebatePage = () => {
   const renderContent = () => {
     if (currentPhase === 'waiting') {
       return (
-        <div className="text-center space-y-6 p-8">
-          <div className="w-24 h-24 bg-islamic-gold-100 rounded-full mx-auto flex items-center justify-center animate-pulse">
-            <Users className="h-12 w-12 text-islamic-gold-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-islamic-gold-600 mb-2">
-              {getWaitingMessage()}
-            </h2>
-            {debateData && (
-              <div className="bg-islamic-gold-50 rounded-lg p-4 max-w-md mx-auto">
-                <p className="text-sm text-muted-foreground mb-2">
-                  كود المناظرة: <span className="font-mono font-bold">{debateData.code}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  شارك هذا الكود مع الآخرين للانضمام
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        <WaitingScreen message={getWaitingMessage()} />
       );
     }
 
@@ -190,140 +183,134 @@ const DebatePage = () => {
       );
     }
 
-    if (currentPhase === 'preparation') {
-      return (
-        <div className="text-center space-y-6 p-8">
-          <h3 className="text-xl font-bold text-islamic-gold-600">
-            الجولة {currentRound} - فترة التحضير
-          </h3>
-          <p className="text-muted-foreground">
-            {selectedPlayer} يبدأ الجولة
-          </p>
-          <ClockTimer
-            initialTime={debateSettings.preparationTime * 60}
-            isActive={true}
-            onTimeUp={startRound}
-            label="وقت التحضير"
-          />
-        </div>
-      );
-    }
-
-    if (currentPhase === 'round') {
-      return (
-        <div className="text-center space-y-6 p-8">
-          <h3 className="text-xl font-bold text-islamic-blue-600">
-            الجولة {currentRound} - المناظرة جارية
-          </h3>
-          <ClockTimer
-            initialTime={debateSettings.roundTime * 60}
-            isActive={true}
-            onTimeUp={endRound}
-            label="وقت الجولة"
-            variant="warning"
-          />
-          <div className="flex justify-center space-x-4">
-            <Button
-              onClick={toggleMic}
-              variant="outline"
-            >
-              {isMicOn ? (
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800">
+        {/* الشريط العلوي */}
+        <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div className="flex items-center space-x-reverse space-x-4">
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/dashboard')}
+                className="p-2"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-lg font-bold text-islamic-gold-800 dark:text-islamic-gold-200">
+                  {debateTitle}
+                </h1>
+                {debateData && (
+                  <p className="text-sm text-muted-foreground">
+                    كود المناظرة: {debateData.code}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* إعدادات المناظرة */}
+            <div className="flex items-center space-x-reverse space-x-4 text-sm">
+              {debateSettings && (
                 <>
-                  <Mic className="h-4 w-4 ml-2" />
-                  إيقاف الميكروفون
+                  <span>التحضير: {debateSettings.preparationTime} دقيقة</span>
+                  <span>الجولة: {debateSettings.roundTime} دقيقة</span>
+                  <span>الجولات: {debateSettings.roundCount}</span>
+                  <span>النهاية: {debateSettings.finalTime} دقيقة</span>
                 </>
-              ) : (
-                <>
-                  <MicOff className="h-4 w-4 ml-2" />
-                  تشغيل الميكروفون
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={toggleMute}
-              variant="outline"
-            >
-              {isMuted ? (
-                <>
-                  <VolumeX className="h-4 w-4 ml-2" />
-                  إلغاء الكتم
-                </>
-              ) : (
-                <>
-                  <Volume2 className="h-4 w-4 ml-2" />
-                  كتم الصوت
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    if (currentPhase === 'final') {
-      return (
-        <div className="text-center space-y-6 p-8">
-          <h3 className="text-xl font-bold text-red-600">
-            المناظرة انتهت - وقت النهاية
-          </h3>
-          <ClockTimer
-            initialTime={debateSettings.finalTime * 60}
-            isActive={true}
-            onTimeUp={() => alert('انتهى الوقت!')}
-            label="وقت النهاية"
-            variant="danger"
-          />
-        </div>
-      );
-    }
-
-    return <div className="text-center">Loading...</div>;
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-islamic-gold-50 to-islamic-blue-50 dark:from-gray-900 dark:to-gray-800">
-      {/* الشريط العلوي */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center space-x-reverse space-x-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/dashboard')}
-              className="p-2"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold text-islamic-gold-800 dark:text-islamic-gold-200">
-                {debateTitle}
-              </h1>
-              {debateData && (
-                <p className="text-sm text-muted-foreground">
-                  كود المناظرة: {debateData.code}
-                </p>
               )}
             </div>
           </div>
-          
-          {/* إعدادات المناظرة */}
-          <div className="flex items-center space-x-reverse space-x-4 text-sm">
-            {debateSettings && (
-              <>
-                <span>التحضير: {debateSettings.preparationTime} دقيقة</span>
-                <span>الجولة: {debateSettings.roundTime} دقيقة</span>
-                <span>الجولات: {debateSettings.roundCount}</span>
-              </>
-            )}
-          </div>
+        </div>
+
+        {/* المحتوى الرئيسي */}
+        <div className="max-w-6xl mx-auto p-4">
+          {currentPhase === 'preparation' && (
+            <div className="text-center space-y-6 p-8">
+              <h3 className="text-xl font-bold text-islamic-gold-600">
+                الجولة {currentRound} - فترة التحضير
+              </h3>
+              <p className="text-muted-foreground">
+                {selectedPlayer} يبدأ الجولة
+              </p>
+              <ClockTimer
+                initialTime={debateSettings.preparationTime * 60}
+                isActive={true}
+                onTimeUp={startRound}
+                label="وقت التحضير"
+              />
+            </div>
+          )}
+
+          {currentPhase === 'round' && (
+            <div className="text-center space-y-6 p-8">
+              <h3 className="text-xl font-bold text-islamic-blue-600">
+                الجولة {currentRound} - المناظرة جارية
+              </h3>
+              <ClockTimer
+                initialTime={debateSettings.roundTime * 60}
+                isActive={true}
+                onTimeUp={endRound}
+                label="وقت الجولة"
+                variant="warning"
+              />
+              <div className="flex justify-center space-x-4">
+                <Button
+                  onClick={toggleMic}
+                  variant="outline"
+                  disabled={debateSettings.autoMic}
+                >
+                  {isMicOn ? (
+                    <>
+                      <Mic className="h-4 w-4 ml-2" />
+                      إيقاف الميكروفون
+                    </>
+                  ) : (
+                    <>
+                      <MicOff className="h-4 w-4 ml-2" />
+                      تشغيل الميكروفون
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={toggleMute}
+                  variant="outline"
+                >
+                  {isMuted ? (
+                    <>
+                      <VolumeX className="h-4 w-4 ml-2" />
+                      إلغاء الكتم
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="h-4 w-4 ml-2" />
+                      كتم الصوت
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentPhase === 'final' && (
+            <div className="text-center space-y-6 p-8">
+              <h3 className="text-xl font-bold text-red-600">
+                المناظرة انتهت - وقت النهاية
+              </h3>
+              <ClockTimer
+                initialTime={debateSettings.finalTime * 60}
+                isActive={true}
+                onTimeUp={() => alert('انتهى الوقت!')}
+                label="وقت النهاية"
+                variant="danger"
+              />
+            </div>
+          )}
         </div>
       </div>
+    );
+  };
 
-      {/* المحتوى الرئيسي */}
-      <div className="max-w-6xl mx-auto p-4">
-        {renderContent()}
-      </div>
-    </div>
-  );
+  return renderContent();
 };
 
 export default DebatePage;
