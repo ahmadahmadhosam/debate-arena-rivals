@@ -31,6 +31,7 @@ export class SupabaseDebateManager {
     let code: string;
     let attempts = 0;
     const maxAttempts = 50;
+    let data: any = null;
 
     do {
       code = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -41,16 +42,18 @@ export class SupabaseDebateManager {
         break;
       }
       
-      const { data, error } = await supabase
+      const result = await supabase
         .from('debates')
         .select('code')
         .eq('code', code)
         .maybeSingle();
         
-      if (error) {
-        console.error('Error checking code uniqueness:', error);
+      if (result.error) {
+        console.error('Error checking code uniqueness:', result.error);
         break;
       }
+      
+      data = result.data;
         
     } while (data && attempts < maxAttempts);
 
