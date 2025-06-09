@@ -47,6 +47,11 @@ export class SupabaseDebateManager {
         .eq('code', code)
         .maybeSingle();
         
+      if (error) {
+        console.error('Error checking code uniqueness:', error);
+        break;
+      }
+        
     } while (data && attempts < maxAttempts);
 
     return code;
