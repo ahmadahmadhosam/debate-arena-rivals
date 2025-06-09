@@ -1,434 +1,435 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Shuffle, Users, Code, BarChart, Settings, LogOut } from 'lucide-react';
-import { debateManager } from '@/services/debateManager';
-
-interface User {
-  username: string;
-  religion: string;
-}
+import { Settings, Users, MessageCircle, Globe, UserCheck, Gamepad2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { supabaseDebateManager } from '@/services/supabaseDebateManager';
+import { useToast } from '@/hooks/use-toast';
+import SettingsModal from '@/components/SettingsModal';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [privateCode, setPrivateCode] = useState('');
-  const [preparationTime, setPreparationTime] = useState('1');
-  const [roundTime, setRoundTime] = useState('5');
-  const [roundCount, setRoundCount] = useState('5');
-  const [finalTime, setFinalTime] = useState('5');
+  const { toast } = useToast();
+  
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Settings for debates
+  const [preparationTime, setPreparationTime] = useState(5);
+  const [roundTime, setRoundTime] = useState(3);
+  const [roundCount, setRoundCount] = useState(3);
+  const [finalTime, setFinalTime] = useState(5);
   const [autoMic, setAutoMic] = useState(true);
   
-  // إعدادات المناظرة العشوائية
-  const [randomPreparationTime, setRandomPreparationTime] = useState('1');
-  const [randomRoundTime, setRandomRoundTime] = useState('5');
-  const [randomRoundCount, setRandomRoundCount] = useState('5');
-  const [randomFinalTime, setRandomFinalTime] = useState('5');
-  const [randomAutoMic, setRandomAutoMic] = useState(true);
+  // Join debate
+  const [joinCode, setJoinCode] = useState('');
+  
+  // Settings modal
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    } else {
-      navigate('/');
-    }
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate('/');
+      } else {
+        fetchUserProfile(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleJoinPrivateDebate = () => {
-    if (!privateCode.trim()) {
-      alert('يرجى إدخال كود المناظرة');
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/');
       return;
     }
-
-    const debate = debateManager.getDebate(privateCode.trim().toUpperCase());
     
-    if (!debate) {
-      alert('كود المناظرة غير صحيح');
-      setPrivateCode('');
-      return;
-    }
+    setUser(session.user);
+    await fetchUserProfile(session.user.id);
+    setIsLoading(false);
+  };
 
-    if (debate.opponent) {
-      alert('هذه المناظرة ممتلئة بالفعل');
-      setPrivateCode('');
-      return;
-    }
+  const fetchUserProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-    if (debate.creator === user?.username) {
-      alert('لا يمكنك الدخول لمناظرة أنشأتها أنت');
-      setPrivateCode('');
-      return;
-    }
-
-    if (debate.creatorReligion === user?.religion) {
-      alert('لا يمكنك مناظرة شخص من نفس المذهب');
-      setPrivateCode('');
-      return;
-    }
-
-    const joinResult = debateManager.joinPrivateDebate(
-      privateCode.trim().toUpperCase(),
-      user?.username || '',
-      user?.religion || ''
-    );
-
-    if (joinResult) {
-      console.log('تم الانضمام بنجاح للمناظرة:', privateCode);
-      localStorage.removeItem('fromRandomQueue');
-      navigate(`/debate/${privateCode.trim().toUpperCase()}`);
+    if (error) {
+      console.error('Error fetching profile:', error);
     } else {
-      alert('فشل في الانضمام للمناظرة');
-      setPrivateCode('');
+      setProfile(data);
     }
   };
 
-  const handleCreatePrivateDebate = () => {
-    if (!preparationTime || !roundTime || !roundCount || !finalTime) {
-      alert('يرجى ملء جميع الحقول');
-      return;
-    }
-
+  const createPrivateDebate = async () => {
+    if (!user || !profile) return;
+    
     const settings = {
-      preparationTime: Number(preparationTime),
-      roundTime: Number(roundTime),
-      roundCount: Number(roundCount),
-      finalTime: Number(finalTime),
-      autoMic: autoMic
+      preparationTime,
+      roundTime,
+      roundCount,
+      finalTime,
+      autoMic
     };
 
-    const code = debateManager.createPrivateDebate(
-      user?.username || '',
-      user?.religion || '',
+    const code = await supabaseDebateManager.createPrivateDebate(
+      user.id,
+      profile.religion,
       settings
     );
 
     if (code) {
-      console.log('انتقال إلى المناظرة بالكود:', code);
-      localStorage.removeItem('fromRandomQueue');
+      toast({
+        title: "تم إنشاء المناظرة",
+        description: `كود المناظرة: ${code}`
+      });
       navigate(`/debate/${code}`);
     } else {
-      alert('فشل في إنشاء المناظرة');
+      toast({
+        title: "خطأ",
+        description: "فشل في إنشاء المناظرة",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleStartRandomDebate = () => {
+  const createRandomDebate = async () => {
+    if (!user || !profile) return;
+    
     const settings = {
-      preparationTime: Number(randomPreparationTime),
-      roundTime: Number(randomRoundTime),
-      roundCount: Number(randomRoundCount),
-      finalTime: Number(randomFinalTime),
-      autoMic: randomAutoMic,
+      preparationTime,
+      roundTime,
+      roundCount,
+      finalTime,
+      autoMic,
       isRandom: true
     };
 
-    // إنشاء مناظرة عشوائية جديدة
-    const code = debateManager.createRandomDebate(
-      user?.username || '',
-      user?.religion || '',
+    const code = await supabaseDebateManager.createRandomDebate(
+      user.id,
+      profile.religion,
       settings
     );
 
     if (code) {
-      localStorage.setItem('currentDebate', JSON.stringify(settings));
-      localStorage.setItem('fromRandomQueue', 'true');
+      toast({
+        title: "تم إنشاء المناظرة العشوائية",
+        description: "في انتظار منافس..."
+      });
       navigate(`/debate/${code}`);
     } else {
-      alert('فشل في إنشاء المناظرة العشوائية');
+      toast({
+        title: "خطأ",
+        description: "فشل في إنشاء المناظرة العشوائية",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    navigate('/');
+  const createPublicDebate = async () => {
+    if (!user || !profile) return;
+    
+    const settings = {
+      preparationTime,
+      roundTime,
+      roundCount,
+      finalTime,
+      autoMic
+    };
+
+    const code = await supabaseDebateManager.createPublicDebate(
+      user.id,
+      profile.religion,
+      settings
+    );
+
+    if (code) {
+      toast({
+        title: "تم إنشاء المناظرة العامة",
+        description: "المناظرة متاحة للجميع الآن"
+      });
+      navigate(`/debate/${code}`);
+    } else {
+      toast({
+        title: "خطأ",
+        description: "فشل في إنشاء المناظرة العامة",
+        variant: "destructive"
+      });
+    }
   };
 
+  const joinDebate = async () => {
+    if (!joinCode.trim() || !user || !profile) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال كود المناظرة",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const debate = await supabaseDebateManager.joinDebate(
+      joinCode,
+      user.id,
+      profile.religion
+    );
+
+    if (debate) {
+      toast({
+        title: "تم الانضمام للمناظرة",
+        description: "جاري تحميل المناظرة..."
+      });
+      navigate(`/debate/${joinCode}`);
+    } else {
+      toast({
+        title: "خطأ",
+        description: "كود المناظرة غير صحيح أو غير متاح",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-blue-600 dark:text-blue-400 font-semibold">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
-      {/* الشريط العلوي المحسن */}
-      <div className="bg-white dark:bg-gray-800 shadow-lg border-b border-sky-200">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-4 -left-4 w-96 h-96 bg-blue-300 dark:bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-8 -right-4 w-96 h-96 bg-purple-300 dark:bg-purple-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-indigo-300 dark:bg-indigo-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
           <div className="flex items-center space-x-reverse space-x-4">
-            <div className="w-10 h-10 bg-gradient-to-r from-sky-500 to-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">م</span>
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-2xl">🕌</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-sky-800 dark:text-sky-200">
-                منصة المناظرات الإسلامية
+              <h1 className="text-3xl font-bold text-blue-800 dark:text-blue-200" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                أهلاً {profile?.username || 'بك'}
               </h1>
-              <p className="text-sm text-sky-600 dark:text-sky-300">
-                مرحباً {user?.username} ({user?.religion})
+              <p className="text-blue-600 dark:text-blue-400" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                المذهب: {profile?.religion}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-reverse space-x-3">
-            <Button variant="outline" size="sm" onClick={() => navigate('/random-debates')} className="border-sky-300 text-sky-600 hover:bg-sky-50">
-              <Users className="h-4 w-4 ml-2" />
-              المناظرات العشوائية
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/profile')} className="border-sky-300 text-sky-600 hover:bg-sky-50">
-              <Users className="h-4 w-4 ml-2" />
-              الملف الشخصي
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/public-debates')} className="border-sky-300 text-sky-600 hover:bg-sky-50">
-              <BarChart className="h-4 w-4 ml-2" />
-              مناظرات عامة
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 ml-2" />
-              تسجيل الخروج
-            </Button>
-          </div>
+          
+          <Button
+            onClick={() => setIsSettingsOpen(true)}
+            variant="outline"
+            size="lg"
+            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 transform hover:scale-105 transition-all duration-200"
+          >
+            <Settings className="h-5 w-5 ml-2" />
+            <span style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>الإعدادات</span>
+          </Button>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-          {/* بطاقة الدخول بالكود */}
-          <Card className="bg-white/80 backdrop-blur-sm border-sky-200 shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-200">
-              <CardTitle className="text-center text-sky-600 flex items-center justify-center space-x-reverse space-x-2">
-                <Code className="h-6 w-6" />
-                <span>الدخول بالكود</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-sky-100 rounded-full mx-auto flex items-center justify-center">
-                  <Code className="h-8 w-8 text-sky-600" />
-                </div>
-                <p className="text-sky-600 text-sm">
-                  ادخل كود المناظرة للانضمام إلى مناظرة خاصة
-                </p>
-                <div className="space-y-3">
-                  <Input
-                    type="text"
-                    placeholder="أدخل كود المناظرة (6 أحرف)"
-                    value={privateCode}
-                    onChange={(e) => setPrivateCode(e.target.value.toUpperCase())}
-                    className="text-center text-lg font-mono tracking-widest border-sky-300 focus:border-sky-500"
-                    maxLength={6}
-                  />
-                  <Button 
-                    onClick={handleJoinPrivateDebate}
-                    className="w-full bg-sky-500 hover:bg-sky-600 text-white"
-                    size="lg"
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Main Actions */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <Card className="shadow-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-blue-200 dark:border-blue-700">
+              <CardHeader>
+                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  <Gamepad2 className="h-6 w-6 ml-3" />
+                  إجراءات سريعة
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button
+                    onClick={() => navigate('/random-debates')}
+                    className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                   >
-                    دخول المناظرة
+                    <Users className="h-5 w-5 ml-2" />
+                    المناظرات العشوائية
+                  </Button>
+                  
+                  <Button
+                    onClick={() => navigate('/public-debates')}
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                  >
+                    <Globe className="h-5 w-5 ml-2" />
+                    المناظرات العامة
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* بطاقة إنشاء مناظرة خاصة */}
-          <Card className="bg-white/80 backdrop-blur-sm border-sky-200 shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-sky-50 border-b border-sky-200">
-              <CardTitle className="text-center text-blue-600 flex items-center justify-center space-x-reverse space-x-2">
-                <Users className="h-6 w-6" />
-                <span>إنشاء مناظرة خاصة</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="prep-time" className="text-sm font-medium text-sky-700">وقت التحضير</Label>
-                  <Select value={preparationTime} onValueChange={setPreparationTime}>
-                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
-                      <SelectValue placeholder="اختر الوقت" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 دقيقة</SelectItem>
-                      <SelectItem value="2">2 دقيقة</SelectItem>
-                      <SelectItem value="3">3 دقيقة</SelectItem>
-                      <SelectItem value="5">5 دقيقة</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Button
+                    onClick={createRandomDebate}
+                    className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                  >
+                    إنشاء عشوائية
+                  </Button>
+                  
+                  <Button
+                    onClick={createPublicDebate}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                  >
+                    إنشاء عامة
+                  </Button>
+                  
+                  <Button
+                    onClick={createPrivateDebate}
+                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                  >
+                    إنشاء خاصة
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
 
+            {/* Join Debate */}
+            <Card className="shadow-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-blue-200 dark:border-blue-700">
+              <CardHeader>
+                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  <UserCheck className="h-6 w-6 ml-3" />
+                  الانضمام لمناظرة
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="round-time" className="text-sm font-medium text-sky-700">وقت الجولة</Label>
-                  <Select value={roundTime} onValueChange={setRoundTime}>
-                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
-                      <SelectValue placeholder="اختر الوقت" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 دقيقة</SelectItem>
-                      <SelectItem value="5">5 دقيقة</SelectItem>
-                      <SelectItem value="7">7 دقيقة</SelectItem>
-                      <SelectItem value="10">10 دقيقة</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="round-count" className="text-sm font-medium text-sky-700">عدد الجولات</Label>
-                  <Select value={roundCount} onValueChange={setRoundCount}>
-                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
-                      <SelectValue placeholder="اختر العدد" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">جولة واحدة</SelectItem>
-                      <SelectItem value="3">3 جولات</SelectItem>
-                      <SelectItem value="5">5 جولات</SelectItem>
-                      <SelectItem value="7">7 جولات</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="final-time" className="text-sm font-medium text-sky-700">وقت النهاية</Label>
-                  <Select value={finalTime} onValueChange={setFinalTime}>
-                    <SelectTrigger className="h-10 border-sky-300 focus:border-sky-500">
-                      <SelectValue placeholder="اختر الوقت" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 دقيقة</SelectItem>
-                      <SelectItem value="5">5 دقيقة</SelectItem>
-                      <SelectItem value="7">7 دقيقة</SelectItem>
-                      <SelectItem value="10">10 دقيقة</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="bg-sky-50 p-4 rounded-lg border border-sky-200">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="auto-mic" className="text-sm font-medium text-sky-700">تشغيل الميكروفون تلقائياً</Label>
-                  <Switch
-                    id="auto-mic"
-                    checked={autoMic}
-                    onCheckedChange={setAutoMic}
+                  <Label htmlFor="join-code" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                    كود المناظرة
+                  </Label>
+                  <Input
+                    id="join-code"
+                    placeholder="أدخل كود المناظرة"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600 text-center font-mono text-lg"
+                    onKeyPress={(e) => e.key === 'Enter' && joinDebate()}
                   />
                 </div>
-                <p className="text-xs text-sky-600 mt-2">
-                  سيتم تشغيل الميكروفون تلقائياً في بداية كل جولة
-                </p>
-              </div>
+                <Button
+                  onClick={joinDebate}
+                  className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                >
+                  <MessageCircle className="h-5 w-5 ml-2" />
+                  انضم للمناظرة
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
 
-              <Button 
-                onClick={handleCreatePrivateDebate}
-                className="w-full bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white"
-                size="lg"
-              >
-                إنشاء مناظرة خاصة
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* بطاقة المناظرات العشوائية */}
-          <Card className="bg-white/80 backdrop-blur-sm border-sky-200 shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-2 xl:col-span-1">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200">
-              <CardTitle className="text-center text-green-600 flex items-center justify-center space-x-reverse space-x-2">
-                <Shuffle className="h-6 w-6" />
-                <span>المناظرات العشوائية</span>
+          {/* Settings Panel */}
+          <Card className="shadow-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-blue-200 dark:border-blue-700">
+            <CardHeader>
+              <CardTitle className="text-blue-700 dark:text-blue-300" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                إعدادات المناظرة
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center">
-                  <Shuffle className="h-10 w-10 text-green-600" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-lg text-green-700">مناظرة سريعة</h3>
-                  <p className="text-green-600 text-sm">
-                    ابدأ مناظرة فورية مع مناظر عشوائي من المذهب المختلف
-                  </p>
-                </div>
-                
-                {/* إعدادات المناظرة العشوائية */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-green-700">وقت التحضير</Label>
-                    <Select value={randomPreparationTime} onValueChange={setRandomPreparationTime}>
-                      <SelectTrigger className="h-8 text-xs border-green-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 دقيقة</SelectItem>
-                        <SelectItem value="2">2 دقيقة</SelectItem>
-                        <SelectItem value="3">3 دقيقة</SelectItem>
-                        <SelectItem value="5">5 دقيقة</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <CardContent className="space-y-6">
+              {/* Preparation Time */}
+              <div className="space-y-3">
+                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  وقت التحضير: {preparationTime} دقائق
+                </Label>
+                <Slider
+                  value={[preparationTime]}
+                  onValueChange={(value) => setPreparationTime(value[0])}
+                  max={15}
+                  min={1}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-xs text-green-700">وقت الجولة</Label>
-                    <Select value={randomRoundTime} onValueChange={setRandomRoundTime}>
-                      <SelectTrigger className="h-8 text-xs border-green-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3">3 دقيقة</SelectItem>
-                        <SelectItem value="5">5 دقيقة</SelectItem>
-                        <SelectItem value="7">7 دقيقة</SelectItem>
-                        <SelectItem value="10">10 دقيقة</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              {/* Round Time */}
+              <div className="space-y-3">
+                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  مدة الجولة: {roundTime} دقائق
+                </Label>
+                <Slider
+                  value={[roundTime]}
+                  onValueChange={(value) => setRoundTime(value[0])}
+                  max={10}
+                  min={1}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-xs text-green-700">عدد الجولات</Label>
-                    <Select value={randomRoundCount} onValueChange={setRandomRoundCount}>
-                      <SelectTrigger className="h-8 text-xs border-green-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">جولة واحدة</SelectItem>
-                        <SelectItem value="3">3 جولات</SelectItem>
-                        <SelectItem value="5">5 جولات</SelectItem>
-                        <SelectItem value="7">7 جولات</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              {/* Round Count */}
+              <div className="space-y-3">
+                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  عدد الجولات: {roundCount}
+                </Label>
+                <Slider
+                  value={[roundCount]}
+                  onValueChange={(value) => setRoundCount(value[0])}
+                  max={7}
+                  min={1}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-xs text-green-700">وقت النهاية</Label>
-                    <Select value={randomFinalTime} onValueChange={setRandomFinalTime}>
-                      <SelectTrigger className="h-8 text-xs border-green-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3">3 دقيقة</SelectItem>
-                        <SelectItem value="5">5 دقيقة</SelectItem>
-                        <SelectItem value="7">7 دقيقة</SelectItem>
-                        <SelectItem value="10">10 دقيقة</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              {/* Final Time */}
+              <div className="space-y-3">
+                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  وقت الختام: {finalTime} دقائق
+                </Label>
+                <Slider
+                  value={[finalTime]}
+                  onValueChange={(value) => setFinalTime(value[0])}
+                  max={15}
+                  min={1}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
 
-                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium text-green-700">تشغيل الميكروفون تلقائياً</Label>
-                    <Switch
-                      checked={randomAutoMic}
-                      onCheckedChange={setRandomAutoMic}
-                      className="scale-75"
-                    />
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={handleStartRandomDebate}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white"
-                  size="lg"
-                >
-                  <Shuffle className="h-5 w-5 ml-2" />
-                  بدء مناظرة عشوائية
-                </Button>
+              {/* Auto Mic */}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="auto-mic" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  تحكم تلقائي بالميكروفون
+                </Label>
+                <Switch
+                  id="auto-mic"
+                  checked={autoMic}
+                  onCheckedChange={setAutoMic}
+                />
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 };
