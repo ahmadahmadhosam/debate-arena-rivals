@@ -76,7 +76,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
       {isPrivateDebate && debateCode && (
         <div className="absolute top-6 right-6 bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
           <div className="flex items-center space-x-reverse space-x-3">
-            <span className="text-white font-bold text-lg font-mono tracking-wider">
+            <span className="text-white font-bold text-lg font-mono tracking-wider border border-white/50 rounded px-3 py-1">
               {debateCode}
             </span>
             <Button
@@ -92,23 +92,23 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
               )}
             </Button>
           </div>
-          <p className="text-white/80 text-xs mt-1">كود المناظرة</p>
+          <p className="text-white/80 text-xs mt-1 border border-white/30 rounded px-2 py-1 inline-block">
+            كود المناظرة
+          </p>
         </div>
       )}
 
       <div className="text-center space-y-8 p-8 max-w-2xl mx-auto relative z-10">
         {/* دائرة التحميل */}
-        <div className="flex justify-center relative">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/30 to-sky-200/30 animate-spin"></div>
-          <Loader2 className="h-20 w-20 text-white animate-spin relative z-10" />
+        <div className="flex justify-center">
+          <Loader2 className="h-20 w-20 text-white animate-spin" />
         </div>
         
         {/* رسالة الانتظار */}
-        <div className="bg-white/20 backdrop-blur-sm rounded-3xl p-8 border border-white/30 shadow-2xl">
-          <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
+        <div className="bg-white/20 backdrop-blur-sm rounded-3xl p-8 border-2 border-white/30 shadow-2xl">
+          <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg border border-white/40 rounded-lg px-4 py-2 inline-block">
             {message}
           </h2>
-          <div className="w-16 h-1 bg-gradient-to-r from-white to-sky-200 mx-auto rounded-full"></div>
         </div>
         
         {/* نصيحة اليوم مع التأثيرات البصرية */}
@@ -116,12 +116,12 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
           {/* تأثير الضوء المتحرك */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform skew-x-12 animate-pulse"></div>
           
-          <h3 className="text-xl font-bold text-white/95 mb-6 relative z-10">
+          <h3 className="text-xl font-bold text-white/95 mb-6 relative z-10 border border-white/50 rounded-lg px-4 py-2 inline-block">
             نصيحة اليوم:
           </h3>
           
           <div className="relative z-10 min-h-[60px] flex items-center justify-center">
-            <p className="text-white text-xl font-medium leading-relaxed text-center relative">
+            <p className="text-white text-xl font-medium leading-relaxed text-center relative border border-white/50 rounded-lg px-4 py-3">
               <span 
                 className="bg-gradient-to-r from-yellow-200 via-white to-sky-200 bg-clip-text text-transparent animate-pulse"
                 style={{
@@ -143,10 +143,10 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
           {tips.map((_, index) => (
             <div
               key={index}
-              className={`w-3 h-3 rounded-full transition-all duration-500 ${
+              className={`w-3 h-3 rounded-full transition-all duration-500 border ${
                 index === currentTipIndex 
-                  ? 'bg-white shadow-lg scale-125' 
-                  : 'bg-white/50 hover:bg-white/70'
+                  ? 'bg-white shadow-lg scale-125 border-white' 
+                  : 'bg-white/50 hover:bg-white/70 border-white/50'
               }`}
             />
           ))}
@@ -157,7 +157,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className={`absolute w-2 h-2 bg-white/30 rounded-full animate-ping`}
+              className={`absolute w-2 h-2 bg-white/30 rounded-full animate-ping border border-white/40`}
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,

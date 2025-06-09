@@ -11,6 +11,7 @@ import DebatePage from "./pages/DebatePage";
 import ProfilePage from "./pages/ProfilePage";
 import PublicDebatesPage from "./pages/PublicDebatesPage";
 import RandomDebatesPage from "./pages/RandomDebatesPage";
+import PublicRandomDebatesPage from "./pages/PublicRandomDebatesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/public-debates" element={<PublicDebatesPage />} />
           <Route path="/random-debates" element={<RandomDebatesPage />} />
+          <Route path="/public-random-debates" element={<PublicRandomDebatesPage />} />
           <Route path="/debate/:code" element={<DebatePage />} />
           <Route path="/welcome" element={<Index />} />
           <Route path="*" element={<NotFound />} />

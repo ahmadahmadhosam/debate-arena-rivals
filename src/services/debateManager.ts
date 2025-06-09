@@ -147,22 +147,39 @@ class DebateManager {
 
   joinPrivateDebate(code: string, opponent: string, opponentReligion: string): DebateSession | null {
     try {
+      // البحث في المناظرات الخاصة أولاً
       const debates = this.getActiveDebates();
       const normalizedCode = code.toUpperCase().trim();
       
       console.log(`محاولة الدخول بالكود: ${normalizedCode}`);
       console.log('المناظرات المتاحة:', debates.map(d => ({ code: d.code, creator: d.creator, hasOpponent: !!d.opponent })));
       
-      const debateIndex = debates.findIndex(debate => 
+      let debateIndex = debates.findIndex(debate => 
         debate.code === normalizedCode && !debate.opponent
       );
+
+      let isRandomDebate = false;
+      let targetDebates = debates;
+
+      // إذا لم توجد في المناظرات الخاصة، ابحث في العشوائية
+      if (debateIndex === -1) {
+        const randomDebates = this.getRandomDebates();
+        debateIndex = randomDebates.findIndex(debate => 
+          debate.code === normalizedCode && !debate.opponent
+        );
+        
+        if (debateIndex !== -1) {
+          isRandomDebate = true;
+          targetDebates = randomDebates;
+        }
+      }
 
       if (debateIndex === -1) {
         console.log('المناظرة غير موجودة أو ممتلئة');
         return null;
       }
 
-      const debate = debates[debateIndex];
+      const debate = targetDebates[debateIndex];
       
       // التحقق من اختلاف المذهب
       if (debate.creatorReligion === opponentReligion) {
@@ -175,8 +192,14 @@ class DebateManager {
       debate.opponentReligion = opponentReligion;
       debate.isActive = true;
 
-      debates[debateIndex] = debate;
-      this.saveActiveDebates(debates);
+      targetDebates[debateIndex] = debate;
+      
+      // حفظ التغييرات في المكان المناسب
+      if (isRandomDebate) {
+        this.saveRandomDebates(targetDebates);
+      } else {
+        this.saveActiveDebates(targetDebates);
+      }
 
       console.log(`تم الانضمام للمناظرة بنجاح: ${code}`);
       return debate;
