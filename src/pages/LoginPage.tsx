@@ -11,10 +11,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const LoginPage = () => {
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginEmailOrPhone, setLoginEmailOrPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [registerUsername, setRegisterUsername] = useState('');
-  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerEmailOrPhone, setRegisterEmailOrPhone] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [religion, setReligion] = useState<'سني' | 'شيعي'>('سني');
@@ -42,8 +42,13 @@ const LoginPage = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const isPhoneNumber = (input: string) => {
+    // Check if input is a phone number (starts with + or contains only digits)
+    return /^\+?\d+$/.test(input.replace(/\s/g, ''));
+  };
+
   const handleLogin = async () => {
-    if (!loginEmail.trim() || !loginPassword.trim()) {
+    if (!loginEmailOrPhone.trim() || !loginPassword.trim()) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول",
@@ -54,21 +59,40 @@ const LoginPage = () => {
 
     setIsLoading(true);
     
-    const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail.trim(),
-      password: loginPassword
-    });
+    try {
+      let authResult;
+      
+      if (isPhoneNumber(loginEmailOrPhone)) {
+        // Login with phone number
+        authResult = await supabase.auth.signInWithPassword({
+          phone: loginEmailOrPhone.trim(),
+          password: loginPassword
+        });
+      } else {
+        // Login with email
+        authResult = await supabase.auth.signInWithPassword({
+          email: loginEmailOrPhone.trim(),
+          password: loginPassword
+        });
+      }
 
-    if (error) {
+      if (authResult.error) {
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: authResult.error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "نجح تسجيل الدخول",
+          description: "مرحباً بك في منصة المناظرات"
+        });
+      }
+    } catch (error: any) {
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: error.message,
+        description: error.message || "حدث خطأ غير متوقع",
         variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "نجح تسجيل الدخول",
-        description: "مرحباً بك في منصة المناظرات"
       });
     }
     
@@ -76,7 +100,7 @@ const LoginPage = () => {
   };
 
   const handleRegister = async () => {
-    if (!registerUsername.trim() || !registerEmail.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
+    if (!registerUsername.trim() || !registerEmailOrPhone.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول",
@@ -105,28 +129,56 @@ const LoginPage = () => {
 
     setIsLoading(true);
     
-    const { error } = await supabase.auth.signUp({
-      email: registerEmail.trim(),
-      password: registerPassword,
-      options: {
-        data: {
-          username: registerUsername.trim(),
-          religion: religion
-        },
-        emailRedirectTo: `${window.location.origin}/dashboard`
+    try {
+      let authResult;
+      
+      if (isPhoneNumber(registerEmailOrPhone)) {
+        // Register with phone number (no email confirmation needed)
+        authResult = await supabase.auth.signUp({
+          phone: registerEmailOrPhone.trim(),
+          password: registerPassword,
+          options: {
+            data: {
+              username: registerUsername.trim(),
+              religion: religion
+            }
+          }
+        });
+      } else {
+        // Register with email (no email confirmation needed)
+        authResult = await supabase.auth.signUp({
+          email: registerEmailOrPhone.trim(),
+          password: registerPassword,
+          options: {
+            data: {
+              username: registerUsername.trim(),
+              religion: religion
+            }
+          }
+        });
       }
-    });
 
-    if (error) {
+      if (authResult.error) {
+        toast({
+          title: "خطأ في إنشاء الحساب",
+          description: authResult.error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "تم إنشاء الحساب بنجاح",
+          description: "يمكنك الآن استخدام الحساب مباشرة"
+        });
+        // Auto login after successful registration
+        if (authResult.data.session) {
+          navigate('/dashboard');
+        }
+      }
+    } catch (error: any) {
       toast({
         title: "خطأ في إنشاء الحساب",
-        description: error.message,
+        description: error.message || "حدث خطأ غير متوقع",
         variant: "destructive"
-      });
-    } else {
-      toast({
-        title: "تم إنشاء الحساب بنجاح",
-        description: "يرجى تفعيل الحساب من خلال الإيميل المرسل إليك"
       });
     }
     
@@ -170,13 +222,13 @@ const LoginPage = () => {
               
               <TabsContent value="login" className="space-y-4 mt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>البريد الإلكتروني</Label>
+                  <Label htmlFor="login-email-or-phone" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>البريد الإلكتروني أو رقم الهاتف</Label>
                   <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="أدخل البريد الإلكتروني"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
+                    id="login-email-or-phone"
+                    type="text"
+                    placeholder="أدخل البريد الإلكتروني أو رقم الهاتف"
+                    value={loginEmailOrPhone}
+                    onChange={(e) => setLoginEmailOrPhone(e.target.value)}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
                   />
                 </div>
@@ -216,13 +268,13 @@ const LoginPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-email" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>البريد الإلكتروني</Label>
+                  <Label htmlFor="register-email-or-phone" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>البريد الإلكتروني أو رقم الهاتف</Label>
                   <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="أدخل البريد الإلكتروني"
-                    value={registerEmail}
-                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    id="register-email-or-phone"
+                    type="text"
+                    placeholder="أدخل البريد الإلكتروني أو رقم الهاتف"
+                    value={registerEmailOrPhone}
+                    onChange={(e) => setRegisterEmailOrPhone(e.target.value)}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
                   />
                 </div>

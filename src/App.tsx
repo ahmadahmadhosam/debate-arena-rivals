@@ -9,7 +9,6 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import DebatePage from "./pages/DebatePage";
 import ProfilePage from "./pages/ProfilePage";
-import PublicDebatesPage from "./pages/PublicDebatesPage";
 import RandomDebatesPage from "./pages/RandomDebatesPage";
 import PublicRandomDebatesPage from "./pages/PublicRandomDebatesPage";
 import NotFound from "./pages/NotFound";
@@ -26,7 +25,6 @@ const App = () => (
           <Route path="/" element={<LoginPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/public-debates" element={<PublicDebatesPage />} />
           <Route path="/random-debates" element={<RandomDebatesPage />} />
           <Route path="/public-random-debates" element={<PublicRandomDebatesPage />} />
           <Route path="/debate/:code" element={<DebatePage />} />

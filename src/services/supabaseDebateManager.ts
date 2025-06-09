@@ -20,7 +20,6 @@ export interface Debate {
   settings: DebateSettings;
   is_active: boolean;
   is_random: boolean;
-  is_public: boolean;
   status: 'waiting' | 'active' | 'finished';
   created_at: string;
   updated_at: string;
@@ -73,7 +72,6 @@ export class SupabaseDebateManager {
           settings: settings as any,
           is_active: false,
           is_random: false,
-          is_public: false,
           status: 'waiting'
         })
         .select()
@@ -104,7 +102,6 @@ export class SupabaseDebateManager {
           settings: { ...settings, isRandom: true } as any,
           is_active: false,
           is_random: true,
-          is_public: false,
           status: 'waiting'
         })
         .select()
@@ -118,37 +115,6 @@ export class SupabaseDebateManager {
       return code;
     } catch (error) {
       console.error('Error creating random debate:', error);
-      return null;
-    }
-  }
-
-  async createPublicDebate(creatorId: string, creatorReligion: string, settings: DebateSettings): Promise<string | null> {
-    try {
-      const code = await this.generateUniqueCode();
-      
-      const { data, error } = await supabase
-        .from('debates')
-        .insert({
-          code,
-          creator_id: creatorId,
-          creator_religion: creatorReligion,
-          settings: settings as any,
-          is_active: false,
-          is_random: false,
-          is_public: true,
-          status: 'waiting'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating public debate:', error);
-        return null;
-      }
-
-      return code;
-    } catch (error) {
-      console.error('Error creating public debate:', error);
       return null;
     }
   }
@@ -199,8 +165,7 @@ export class SupabaseDebateManager {
         settings: (updatedDebate.settings as unknown) as DebateSettings,
         status: updatedDebate.status as 'waiting' | 'active' | 'finished',
         is_active: updatedDebate.is_active ?? false,
-        is_random: updatedDebate.is_random ?? false,
-        is_public: updatedDebate.is_public ?? false
+        is_random: updatedDebate.is_random ?? false
       };
     } catch (error) {
       console.error('Error joining debate:', error);
@@ -232,8 +197,7 @@ export class SupabaseDebateManager {
         settings: (data.settings as unknown) as DebateSettings,
         status: data.status as 'waiting' | 'active' | 'finished',
         is_active: data.is_active ?? false,
-        is_random: data.is_random ?? false,
-        is_public: data.is_public ?? false
+        is_random: data.is_random ?? false
       };
     } catch (error) {
       console.error('Error fetching debate:', error);
@@ -261,40 +225,10 @@ export class SupabaseDebateManager {
         settings: (debate.settings as unknown) as DebateSettings,
         status: debate.status as 'waiting' | 'active' | 'finished',
         is_active: debate.is_active ?? false,
-        is_random: debate.is_random ?? false,
-        is_public: debate.is_public ?? false
+        is_random: debate.is_random ?? false
       }));
     } catch (error) {
       console.error('Error fetching random debates:', error);
-      return [];
-    }
-  }
-
-  async getPublicDebates(): Promise<Debate[]> {
-    try {
-      const { data, error } = await supabase
-        .from('debates')
-        .select('*')
-        .eq('is_public', true)
-        .eq('status', 'waiting')
-        .is('opponent_id', null)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching public debates:', error);
-        return [];
-      }
-
-      return (data || []).map(debate => ({
-        ...debate,
-        settings: (debate.settings as unknown) as DebateSettings,
-        status: debate.status as 'waiting' | 'active' | 'finished',
-        is_active: debate.is_active ?? false,
-        is_random: debate.is_random ?? false,
-        is_public: debate.is_public ?? false
-      }));
-    } catch (error) {
-      console.error('Error fetching public debates:', error);
       return [];
     }
   }
@@ -317,8 +251,7 @@ export class SupabaseDebateManager {
         settings: (debate.settings as unknown) as DebateSettings,
         status: debate.status as 'waiting' | 'active' | 'finished',
         is_active: debate.is_active ?? false,
-        is_random: debate.is_random ?? false,
-        is_public: debate.is_public ?? false
+        is_random: debate.is_random ?? false
       }));
     } catch (error) {
       console.error('Error fetching user debates:', error);
