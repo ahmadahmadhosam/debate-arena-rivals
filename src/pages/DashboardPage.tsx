@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Users, MessageCircle, Globe, UserCheck, Gamepad2 } from 'lucide-react';
+import { Settings, Users, MessageCircle, UserCheck, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseDebateManager } from '@/services/supabaseDebateManager';
 import { useToast } from '@/hooks/use-toast';
@@ -140,38 +140,6 @@ const DashboardPage = () => {
     }
   };
 
-  const createPublicDebate = async () => {
-    if (!user || !profile) return;
-    
-    const settings = {
-      preparationTime,
-      roundTime,
-      roundCount,
-      finalTime,
-      autoMic
-    };
-
-    const code = await supabaseDebateManager.createPublicDebate(
-      user.id,
-      profile.religion,
-      settings
-    );
-
-    if (code) {
-      toast({
-        title: "تم إنشاء المناظرة العامة",
-        description: "المناظرة متاحة للجميع الآن"
-      });
-      navigate(`/debate/${code}`);
-    } else {
-      toast({
-        title: "خطأ",
-        description: "فشل في إنشاء المناظرة العامة",
-        variant: "destructive"
-      });
-    }
-  };
-
   const joinDebate = async () => {
     if (!joinCode.trim() || !user || !profile) {
       toast({
@@ -263,7 +231,7 @@ const DashboardPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
                   <Button
                     onClick={() => navigate('/random-debates')}
                     className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 transform hover:scale-105 transition-all duration-200 shadow-lg"
@@ -272,32 +240,15 @@ const DashboardPage = () => {
                     <Users className="h-5 w-5 ml-2" />
                     المناظرات العشوائية
                   </Button>
-                  
-                  <Button
-                    onClick={() => navigate('/public-debates')}
-                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
-                  >
-                    <Globe className="h-5 w-5 ml-2" />
-                    المناظرات العامة
-                  </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button
                     onClick={createRandomDebate}
                     className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
                     style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                   >
                     إنشاء عشوائية
-                  </Button>
-                  
-                  <Button
-                    onClick={createPublicDebate}
-                    className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
-                  >
-                    إنشاء عامة
                   </Button>
                   
                   <Button
