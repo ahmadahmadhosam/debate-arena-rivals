@@ -45,7 +45,7 @@ export class SupabaseDebateManager {
         .from('debates')
         .select('code')
         .eq('code', code)
-        .single();
+        .maybeSingle();
         
     } while (data && attempts < maxAttempts);
 
@@ -62,7 +62,7 @@ export class SupabaseDebateManager {
           code,
           creator_id: creatorId,
           creator_religion: creatorReligion,
-          settings,
+          settings: settings as any,
           is_active: false,
           is_random: false,
           is_public: false,
@@ -93,7 +93,7 @@ export class SupabaseDebateManager {
           code,
           creator_id: creatorId,
           creator_religion: creatorReligion,
-          settings: { ...settings, isRandom: true },
+          settings: { ...settings, isRandom: true } as any,
           is_active: false,
           is_random: true,
           is_public: false,
@@ -124,7 +124,7 @@ export class SupabaseDebateManager {
           code,
           creator_id: creatorId,
           creator_religion: creatorReligion,
-          settings,
+          settings: settings as any,
           is_active: false,
           is_random: false,
           is_public: true,
@@ -155,7 +155,7 @@ export class SupabaseDebateManager {
         .select('*')
         .eq('code', normalizedCode)
         .is('opponent_id', null)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !debate) {
         console.error('Debate not found:', fetchError);
@@ -186,7 +186,10 @@ export class SupabaseDebateManager {
         return null;
       }
 
-      return updatedDebate;
+      return {
+        ...updatedDebate,
+        settings: updatedDebate.settings as DebateSettings
+      };
     } catch (error) {
       console.error('Error joining debate:', error);
       return null;
@@ -201,14 +204,21 @@ export class SupabaseDebateManager {
         .from('debates')
         .select('*')
         .eq('code', normalizedCode)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching debate:', error);
         return null;
       }
 
-      return data;
+      if (!data) {
+        return null;
+      }
+
+      return {
+        ...data,
+        settings: data.settings as DebateSettings
+      };
     } catch (error) {
       console.error('Error fetching debate:', error);
       return null;
@@ -230,7 +240,10 @@ export class SupabaseDebateManager {
         return [];
       }
 
-      return data || [];
+      return (data || []).map(debate => ({
+        ...debate,
+        settings: debate.settings as DebateSettings
+      }));
     } catch (error) {
       console.error('Error fetching random debates:', error);
       return [];
@@ -252,7 +265,10 @@ export class SupabaseDebateManager {
         return [];
       }
 
-      return data || [];
+      return (data || []).map(debate => ({
+        ...debate,
+        settings: debate.settings as DebateSettings
+      }));
     } catch (error) {
       console.error('Error fetching public debates:', error);
       return [];
@@ -272,7 +288,10 @@ export class SupabaseDebateManager {
         return [];
       }
 
-      return data || [];
+      return (data || []).map(debate => ({
+        ...debate,
+        settings: debate.settings as DebateSettings
+      }));
     } catch (error) {
       console.error('Error fetching user debates:', error);
       return [];
