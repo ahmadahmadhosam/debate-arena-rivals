@@ -11,10 +11,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const LoginPage = () => {
-  const [loginEmailOrPhone, setLoginEmailOrPhone] = useState('');
+  const [loginUsernameOrPhone, setLoginUsernameOrPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [registerUsername, setRegisterUsername] = useState('');
-  const [registerEmailOrPhone, setRegisterEmailOrPhone] = useState('');
+  const [registerFakeAccount, setRegisterFakeAccount] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [religion, setReligion] = useState<'سني' | 'شيعي'>('سني');
@@ -47,8 +47,13 @@ const LoginPage = () => {
     return /^\+?\d+$/.test(input.replace(/\s/g, ''));
   };
 
+  const createFakeEmail = (account: string) => {
+    // Create a fake email from the account name
+    return `${account.toLowerCase().replace(/\s+/g, '')}@fakeuser.local`;
+  };
+
   const handleLogin = async () => {
-    if (!loginEmailOrPhone.trim() || !loginPassword.trim()) {
+    if (!loginUsernameOrPhone.trim() || !loginPassword.trim()) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول",
@@ -62,16 +67,17 @@ const LoginPage = () => {
     try {
       let authResult;
       
-      if (isPhoneNumber(loginEmailOrPhone)) {
+      if (isPhoneNumber(loginUsernameOrPhone)) {
         // Login with phone number
         authResult = await supabase.auth.signInWithPassword({
-          phone: loginEmailOrPhone.trim(),
+          phone: loginUsernameOrPhone.trim(),
           password: loginPassword
         });
       } else {
-        // Login with email
+        // Try to login with fake email created from username
+        const fakeEmail = createFakeEmail(loginUsernameOrPhone);
         authResult = await supabase.auth.signInWithPassword({
-          email: loginEmailOrPhone.trim(),
+          email: fakeEmail,
           password: loginPassword
         });
       }
@@ -79,7 +85,7 @@ const LoginPage = () => {
       if (authResult.error) {
         toast({
           title: "خطأ في تسجيل الدخول",
-          description: authResult.error.message,
+          description: "اسم المستخدم أو كلمة المرور غير صحيحة",
           variant: "destructive"
         });
       } else {
@@ -91,7 +97,7 @@ const LoginPage = () => {
     } catch (error: any) {
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: error.message || "حدث خطأ غير متوقع",
+        description: "اسم المستخدم أو كلمة المرور غير صحيحة",
         variant: "destructive"
       });
     }
@@ -100,7 +106,7 @@ const LoginPage = () => {
   };
 
   const handleRegister = async () => {
-    if (!registerUsername.trim() || !registerEmailOrPhone.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
+    if (!registerUsername.trim() || !registerFakeAccount.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول",
@@ -130,40 +136,36 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      let authResult;
+      const fakeEmail = createFakeEmail(registerFakeAccount);
       
-      if (isPhoneNumber(registerEmailOrPhone)) {
-        // Register with phone number (no email confirmation needed)
-        authResult = await supabase.auth.signUp({
-          phone: registerEmailOrPhone.trim(),
-          password: registerPassword,
-          options: {
-            data: {
-              username: registerUsername.trim(),
-              religion: religion
-            }
-          }
-        });
-      } else {
-        // Register with email (no email confirmation needed)
-        authResult = await supabase.auth.signUp({
-          email: registerEmailOrPhone.trim(),
-          password: registerPassword,
-          options: {
-            data: {
-              username: registerUsername.trim(),
-              religion: religion
-            }
-          }
-        });
-      }
+      // Register with fake email (no email confirmation needed)
+      const authResult = await supabase.auth.signUp({
+        email: fakeEmail,
+        password: registerPassword,
+        options: {
+          data: {
+            username: registerUsername.trim(),
+            religion: religion,
+            fake_account: registerFakeAccount.trim()
+          },
+          emailRedirectTo: undefined // Disable email confirmation
+        }
+      });
 
       if (authResult.error) {
-        toast({
-          title: "خطأ في إنشاء الحساب",
-          description: authResult.error.message,
-          variant: "destructive"
-        });
+        if (authResult.error.message.includes('already registered')) {
+          toast({
+            title: "خطأ في إنشاء الحساب",
+            description: "هذا الحساب مسجل مسبقاً، يرجى اختيار حساب آخر",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "خطأ في إنشاء الحساب",
+            description: authResult.error.message,
+            variant: "destructive"
+          });
+        }
       } else {
         toast({
           title: "تم إنشاء الحساب بنجاح",
@@ -222,13 +224,13 @@ const LoginPage = () => {
               
               <TabsContent value="login" className="space-y-4 mt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email-or-phone" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>البريد الإلكتروني أو رقم الهاتف</Label>
+                  <Label htmlFor="login-username-or-phone" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>اسم المستخدم أو رقم الهاتف</Label>
                   <Input
-                    id="login-email-or-phone"
+                    id="login-username-or-phone"
                     type="text"
-                    placeholder="أدخل البريد الإلكتروني أو رقم الهاتف"
-                    value={loginEmailOrPhone}
-                    onChange={(e) => setLoginEmailOrPhone(e.target.value)}
+                    placeholder="أدخل اسم المستخدم أو رقم الهاتف"
+                    value={loginUsernameOrPhone}
+                    onChange={(e) => setLoginUsernameOrPhone(e.target.value)}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
                   />
                 </div>
@@ -268,15 +270,18 @@ const LoginPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-email-or-phone" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>البريد الإلكتروني أو رقم الهاتف</Label>
+                  <Label htmlFor="register-fake-account" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>حساب جديد (وهمي)</Label>
                   <Input
-                    id="register-email-or-phone"
+                    id="register-fake-account"
                     type="text"
-                    placeholder="أدخل البريد الإلكتروني أو رقم الهاتف"
-                    value={registerEmailOrPhone}
-                    onChange={(e) => setRegisterEmailOrPhone(e.target.value)}
+                    placeholder="اختر اسم حساب وهمي (مثل: محمد123، أحمد_المناظر)"
+                    value={registerFakeAccount}
+                    onChange={(e) => setRegisterFakeAccount(e.target.value)}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
                   />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    هذا حساب وهمي لا يحتاج إلى بريد إلكتروني حقيقي
+                  </p>
                 </div>
                 
                 <div className="space-y-3">
