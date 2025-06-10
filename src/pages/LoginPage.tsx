@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -27,22 +26,10 @@ const LoginPage = () => {
 
   useEffect(() => {
     // Check if user is already logged in
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/dashboard');
-      }
-    };
-    checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate('/dashboard');
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    const appUser = localStorage.getItem('app_user');
+    if (appUser) {
+      navigate('/dashboard');
+    }
   }, [navigate]);
 
   const handleLogin = async () => {
@@ -61,15 +48,15 @@ const LoginPage = () => {
       console.log('محاولة تسجيل الدخول باسم المستخدم:', loginUsername);
       
       const { data, error } = await supabase.rpc('verify_password', {
-        username: loginUsername.trim(),
-        password: loginPassword
+        p_username: loginUsername.trim(),
+        p_password: loginPassword
       });
 
       if (error) {
         console.error('خطأ في تسجيل الدخول:', error);
         toast({
           title: "خطأ في تسجيل الدخول",
-          description: "حدث خطأ في النظام",
+          description: "حدث خطأ في النظام، يرجى المحاولة مرة أخرى",
           variant: "destructive"
         });
       } else if (!data || data.length === 0) {
@@ -82,39 +69,25 @@ const LoginPage = () => {
         const userData = data[0];
         console.log('نجح تسجيل الدخول:', userData);
         
-        // Create a fake email for Supabase auth session
-        const fakeEmail = `${userData.user_id}@app.local`;
+        // Store user data in localStorage
+        localStorage.setItem('app_user', JSON.stringify({
+          id: userData.user_id,
+          username: userData.user_username,
+          religion: userData.user_religion
+        }));
         
-        // Sign in with a dummy account to create auth session
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email: fakeEmail,
-          password: 'dummy_password_for_session'
+        toast({
+          title: "نجح تسجيل الدخول",
+          description: `مرحباً ${userData.user_username}`
         });
-
-        if (authError) {
-          // If dummy auth fails, create a session another way
-          console.log('تسجيل الدخول تم بنجاح:', userData.user_username);
-          
-          // Store user data in localStorage for now
-          localStorage.setItem('app_user', JSON.stringify({
-            id: userData.user_id,
-            username: userData.user_username,
-            religion: userData.user_religion
-          }));
-          
-          toast({
-            title: "نجح تسجيل الدخول",
-            description: `مرحباً ${userData.user_username}`
-          });
-          
-          navigate('/dashboard');
-        }
+        
+        navigate('/dashboard');
       }
     } catch (error: any) {
       console.error('خطأ غير متوقع:', error);
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: "حدث خطأ غير متوقع",
+        description: "حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى",
         variant: "destructive"
       });
     }
@@ -165,7 +138,7 @@ const LoginPage = () => {
         console.error('خطأ في إنشاء الحساب:', error);
         toast({
           title: "خطأ في إنشاء الحساب",
-          description: "حدث خطأ في النظام",
+          description: "حدث خطأ في النظام، يرجى المحاولة مرة أخرى",
           variant: "destructive"
         });
       } else if (data && data.length > 0) {
@@ -173,7 +146,7 @@ const LoginPage = () => {
         if (result.success) {
           console.log('تم إنشاء الحساب بنجاح:', result.user_id);
           
-          // Store user data in localStorage
+          // Store user data in localStorage for automatic login
           localStorage.setItem('app_user', JSON.stringify({
             id: result.user_id,
             username: registerUsername.trim(),
@@ -182,9 +155,10 @@ const LoginPage = () => {
           
           toast({
             title: "تم إنشاء الحساب بنجاح",
-            description: `مرحباً ${registerUsername.trim()}`
+            description: `مرحباً ${registerUsername.trim()}، تم تسجيل الدخول تلقائياً`
           });
           
+          // Navigate to dashboard automatically
           navigate('/dashboard');
         } else {
           toast({
@@ -198,7 +172,7 @@ const LoginPage = () => {
       console.error('خطأ غير متوقع في إنشاء الحساب:', error);
       toast({
         title: "خطأ في إنشاء الحساب",
-        description: "حدث خطأ غير متوقع",
+        description: "حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى",
         variant: "destructive"
       });
     }
