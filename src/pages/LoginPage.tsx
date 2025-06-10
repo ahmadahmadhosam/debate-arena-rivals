@@ -9,15 +9,24 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import PhoneVerification from '@/components/PhoneVerification';
+import CountrySelector, { Country } from '@/components/CountrySelector';
 
 const LoginPage = () => {
+  // Login states
+  const [loginMethod, setLoginMethod] = useState<'fake' | 'phone'>('fake');
   const [loginUsernameOrPhone, setLoginUsernameOrPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [loginCountry, setLoginCountry] = useState<Country | null>(null);
+  
+  // Register states
+  const [registerMethod, setRegisterMethod] = useState<'fake' | 'phone'>('fake');
   const [registerUsername, setRegisterUsername] = useState('');
   const [registerFakeAccount, setRegisterFakeAccount] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [religion, setReligion] = useState<'سني' | 'شيعي'>('سني');
+  
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -42,17 +51,11 @@ const LoginPage = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const isPhoneNumber = (input: string) => {
-    // Check if input is a phone number (starts with + or contains only digits)
-    return /^\+?\d+$/.test(input.replace(/\s/g, ''));
-  };
-
   const createFakeEmail = (account: string) => {
-    // Create a fake email from the account name
     return `${account.toLowerCase().replace(/\s+/g, '')}@fakeuser.local`;
   };
 
-  const handleLogin = async () => {
+  const handleLoginWithFakeAccount = async () => {
     if (!loginUsernameOrPhone.trim() || !loginPassword.trim()) {
       toast({
         title: "خطأ",
@@ -65,24 +68,13 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      let authResult;
-      
-      if (isPhoneNumber(loginUsernameOrPhone)) {
-        // Login with phone number
-        authResult = await supabase.auth.signInWithPassword({
-          phone: loginUsernameOrPhone.trim(),
-          password: loginPassword
-        });
-      } else {
-        // Try to login with fake email created from username
-        const fakeEmail = createFakeEmail(loginUsernameOrPhone);
-        authResult = await supabase.auth.signInWithPassword({
-          email: fakeEmail,
-          password: loginPassword
-        });
-      }
+      const fakeEmail = createFakeEmail(loginUsernameOrPhone);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: fakeEmail,
+        password: loginPassword
+      });
 
-      if (authResult.error) {
+      if (error) {
         toast({
           title: "خطأ في تسجيل الدخول",
           description: "اسم المستخدم أو كلمة المرور غير صحيحة",
@@ -105,7 +97,49 @@ const LoginPage = () => {
     setIsLoading(false);
   };
 
-  const handleRegister = async () => {
+  const handleLoginWithPhone = async () => {
+    if (!loginCountry || !loginUsernameOrPhone.trim() || !loginPassword.trim()) {
+      toast({
+        title: "خطأ",
+        description: "يرجى ملء جميع الحقول",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const fullPhoneNumber = `${loginCountry.dialCode}${loginUsernameOrPhone}`;
+      const { error } = await supabase.auth.signInWithPassword({
+        phone: fullPhoneNumber,
+        password: loginPassword
+      });
+
+      if (error) {
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: "رقم الهاتف أو كلمة المرور غير صحيحة",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "نجح تسجيل الدخول",
+          description: "مرحباً بك في منصة المناظرات"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "خطأ في تسجيل الدخول",
+        description: "رقم الهاتف أو كلمة المرور غير صحيحة",
+        variant: "destructive"
+      });
+    }
+    
+    setIsLoading(false);
+  };
+
+  const handleRegisterWithFakeAccount = async () => {
     if (!registerUsername.trim() || !registerFakeAccount.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
       toast({
         title: "خطأ",
@@ -138,8 +172,7 @@ const LoginPage = () => {
     try {
       const fakeEmail = createFakeEmail(registerFakeAccount);
       
-      // Register with fake email (no email confirmation needed)
-      const authResult = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: fakeEmail,
         password: registerPassword,
         options: {
@@ -148,12 +181,12 @@ const LoginPage = () => {
             religion: religion,
             fake_account: registerFakeAccount.trim()
           },
-          emailRedirectTo: undefined // Disable email confirmation
+          emailRedirectTo: undefined
         }
       });
 
-      if (authResult.error) {
-        if (authResult.error.message.includes('already registered')) {
+      if (error) {
+        if (error.message.includes('already registered')) {
           toast({
             title: "خطأ في إنشاء الحساب",
             description: "هذا الحساب مسجل مسبقاً، يرجى اختيار حساب آخر",
@@ -162,7 +195,7 @@ const LoginPage = () => {
         } else {
           toast({
             title: "خطأ في إنشاء الحساب",
-            description: authResult.error.message,
+            description: error.message,
             variant: "destructive"
           });
         }
@@ -171,10 +204,6 @@ const LoginPage = () => {
           title: "تم إنشاء الحساب بنجاح",
           description: "يمكنك الآن استخدام الحساب مباشرة"
         });
-        // Auto login after successful registration
-        if (authResult.data.session) {
-          navigate('/dashboard');
-        }
       }
     } catch (error: any) {
       toast({
@@ -185,6 +214,14 @@ const LoginPage = () => {
     }
     
     setIsLoading(false);
+  };
+
+  const handleLogin = () => {
+    if (loginMethod === 'fake') {
+      handleLoginWithFakeAccount();
+    } else {
+      handleLoginWithPhone();
+    }
   };
 
   return (
@@ -223,19 +260,68 @@ const LoginPage = () => {
               </TabsList>
               
               <TabsContent value="login" className="space-y-4 mt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="login-username-or-phone" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>اسم المستخدم أو رقم الهاتف</Label>
-                  <Input
-                    id="login-username-or-phone"
-                    type="text"
-                    placeholder="أدخل اسم المستخدم أو رقم الهاتف"
-                    value={loginUsernameOrPhone}
-                    onChange={(e) => setLoginUsernameOrPhone(e.target.value)}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
-                  />
+                <div className="space-y-3">
+                  <Label className="text-blue-700 dark:text-blue-300 font-semibold">طريقة تسجيل الدخول</Label>
+                  <RadioGroup 
+                    value={loginMethod} 
+                    onValueChange={(value: 'fake' | 'phone') => setLoginMethod(value)}
+                    className="flex space-x-reverse space-x-6"
+                  >
+                    <div className="flex items-center space-x-reverse space-x-2">
+                      <RadioGroupItem value="fake" id="login-fake" className="border-2 border-blue-400" />
+                      <Label htmlFor="login-fake" className="text-blue-700 dark:text-blue-300 font-semibold">حساب وهمي</Label>
+                    </div>
+                    <div className="flex items-center space-x-reverse space-x-2">
+                      <RadioGroupItem value="phone" id="login-phone" className="border-2 border-blue-400" />
+                      <Label htmlFor="login-phone" className="text-blue-700 dark:text-blue-300 font-semibold">رقم الهاتف</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
+
+                {loginMethod === 'phone' && (
+                  <div className="space-y-2">
+                    <Label className="text-blue-700 dark:text-blue-300 font-semibold">البلد</Label>
+                    <CountrySelector
+                      selectedCountry={loginCountry}
+                      onCountryChange={setLoginCountry}
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>كلمة المرور</Label>
+                  <Label htmlFor="login-username-or-phone" className="text-blue-700 dark:text-blue-300 font-semibold">
+                    {loginMethod === 'fake' ? 'اسم المستخدم الوهمي' : 'رقم الهاتف'}
+                  </Label>
+                  {loginMethod === 'phone' ? (
+                    <div className="flex gap-2">
+                      <div className="flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-800 border-2 border-blue-300 rounded-md min-w-[80px] justify-center">
+                        <span className="text-sm font-medium">
+                          {loginCountry?.dialCode || '+xxx'}
+                        </span>
+                      </div>
+                      <Input
+                        id="login-username-or-phone"
+                        type="tel"
+                        placeholder="أدخل رقم الهاتف"
+                        value={loginUsernameOrPhone}
+                        onChange={(e) => setLoginUsernameOrPhone(e.target.value.replace(/\D/g, ''))}
+                        className="flex-1 border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      id="login-username-or-phone"
+                      type="text"
+                      placeholder="أدخل اسم المستخدم الوهمي"
+                      value={loginUsernameOrPhone}
+                      onChange={(e) => setLoginUsernameOrPhone(e.target.value)}
+                      className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="login-password" className="text-blue-700 dark:text-blue-300 font-semibold">كلمة المرور</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -246,6 +332,7 @@ const LoginPage = () => {
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
                   />
                 </div>
+
                 <Button 
                   onClick={handleLogin} 
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
@@ -257,8 +344,26 @@ const LoginPage = () => {
               </TabsContent>
               
               <TabsContent value="register" className="space-y-4 mt-6">
+                <div className="space-y-3">
+                  <Label className="text-blue-700 dark:text-blue-300 font-semibold">طريقة إنشاء الحساب</Label>
+                  <RadioGroup 
+                    value={registerMethod} 
+                    onValueChange={(value: 'fake' | 'phone') => setRegisterMethod(value)}
+                    className="flex space-x-reverse space-x-6"
+                  >
+                    <div className="flex items-center space-x-reverse space-x-2">
+                      <RadioGroupItem value="fake" id="register-fake" className="border-2 border-blue-400" />
+                      <Label htmlFor="register-fake" className="text-blue-700 dark:text-blue-300 font-semibold">حساب وهمي</Label>
+                    </div>
+                    <div className="flex items-center space-x-reverse space-x-2">
+                      <RadioGroupItem value="phone" id="register-phone" className="border-2 border-blue-400" />
+                      <Label htmlFor="register-phone" className="text-blue-700 dark:text-blue-300 font-semibold">رقم الهاتف</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="register-username" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>اسم المستخدم</Label>
+                  <Label htmlFor="register-username" className="text-blue-700 dark:text-blue-300 font-semibold">اسم المستخدم</Label>
                   <Input
                     id="register-username"
                     type="text"
@@ -269,23 +374,8 @@ const LoginPage = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="register-fake-account" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>حساب جديد (وهمي)</Label>
-                  <Input
-                    id="register-fake-account"
-                    type="text"
-                    placeholder="اختر اسم حساب وهمي (مثل: محمد123، أحمد_المناظر)"
-                    value={registerFakeAccount}
-                    onChange={(e) => setRegisterFakeAccount(e.target.value)}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    هذا حساب وهمي لا يحتاج إلى بريد إلكتروني حقيقي
-                  </p>
-                </div>
-                
                 <div className="space-y-3">
-                  <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>المذهب</Label>
+                  <Label className="text-blue-700 dark:text-blue-300 font-semibold">المذهب</Label>
                   <RadioGroup 
                     value={religion} 
                     onValueChange={(value: 'سني' | 'شيعي') => setReligion(value)}
@@ -293,48 +383,73 @@ const LoginPage = () => {
                   >
                     <div className="flex items-center space-x-reverse space-x-2">
                       <RadioGroupItem value="سني" id="sunni" className="border-2 border-blue-400" />
-                      <Label htmlFor="sunni" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>سني</Label>
+                      <Label htmlFor="sunni" className="text-blue-700 dark:text-blue-300 font-semibold">سني</Label>
                     </div>
                     <div className="flex items-center space-x-reverse space-x-2">
                       <RadioGroupItem value="شيعي" id="shia" className="border-2 border-blue-400" />
-                      <Label htmlFor="shia" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>شيعي</Label>
+                      <Label htmlFor="shia" className="text-blue-700 dark:text-blue-300 font-semibold">شيعي</Label>
                     </div>
                   </RadioGroup>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="register-password" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>كلمة المرور</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    placeholder="أدخل كلمة المرور"
-                    value={registerPassword}
-                    onChange={(e) => setRegisterPassword(e.target.value)}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+
+                {registerMethod === 'fake' ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-fake-account" className="text-blue-700 dark:text-blue-300 font-semibold">حساب جديد (وهمي)</Label>
+                      <Input
+                        id="register-fake-account"
+                        type="text"
+                        placeholder="اختر اسم حساب وهمي (مثل: محمد123، أحمد_المناظر)"
+                        value={registerFakeAccount}
+                        onChange={(e) => setRegisterFakeAccount(e.target.value)}
+                        className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        هذا حساب وهمي لا يحتاج إلى بريد إلكتروني حقيقي
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="register-password" className="text-blue-700 dark:text-blue-300 font-semibold">كلمة المرور</Label>
+                      <Input
+                        id="register-password"
+                        type="password"
+                        placeholder="أدخل كلمة المرور"
+                        value={registerPassword}
+                        onChange={(e) => setRegisterPassword(e.target.value)}
+                        className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password" className="text-blue-700 dark:text-blue-300 font-semibold">تأكيد كلمة المرور</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        placeholder="أعد إدخال كلمة المرور"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleRegisterWithFakeAccount()}
+                        className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                      />
+                    </div>
+                    
+                    <Button 
+                      onClick={handleRegisterWithFakeAccount} 
+                      className="w-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                      disabled={isLoading}
+                      style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                    >
+                      {isLoading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب'}
+                    </Button>
+                  </>
+                ) : (
+                  <PhoneVerification
+                    onSuccess={() => navigate('/dashboard')}
+                    religion={religion}
+                    username={registerUsername}
                   />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>تأكيد كلمة المرور</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    placeholder="أعد إدخال كلمة المرور"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
-                  />
-                </div>
-                
-                <Button 
-                  onClick={handleRegister} 
-                  className="w-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                  disabled={isLoading}
-                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
-                >
-                  {isLoading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب'}
-                </Button>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>
