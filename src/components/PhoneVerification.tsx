@@ -56,8 +56,9 @@ const PhoneVerification = ({ onSuccess, religion, username }: PhoneVerificationP
     
     try {
       const fullPhoneNumber = `${selectedCountry.dialCode}${phoneNumber}`;
+      console.log('محاولة إنشاء حساب بالرقم:', fullPhoneNumber);
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         phone: fullPhoneNumber,
         password: password,
         options: {
@@ -69,7 +70,14 @@ const PhoneVerification = ({ onSuccess, religion, username }: PhoneVerificationP
       });
 
       if (error) {
-        if (error.message.includes('already registered')) {
+        console.error('خطأ في إنشاء الحساب بالرقم:', error);
+        if (error.message.includes('Phone signups are disabled')) {
+          toast({
+            title: "تسجيل الهاتف معطل",
+            description: "تسجيل الحسابات بالهاتف معطل حالياً. يرجى استخدام الحساب الوهمي أو تفعيل تسجيل الهاتف في إعدادات Supabase",
+            variant: "destructive"
+          });
+        } else if (error.message.includes('already registered')) {
           toast({
             title: "خطأ",
             description: "هذا الرقم مسجل مسبقاً",
@@ -78,11 +86,12 @@ const PhoneVerification = ({ onSuccess, religion, username }: PhoneVerificationP
         } else {
           toast({
             title: "خطأ",
-            description: error.message,
+            description: `فشل في إرسال الكود: ${error.message}`,
             variant: "destructive"
           });
         }
       } else {
+        console.log('تم إرسال كود التحقق:', data);
         toast({
           title: "تم إرسال الكود",
           description: "تم إرسال كود التحقق إلى رقمك"
@@ -90,9 +99,10 @@ const PhoneVerification = ({ onSuccess, religion, username }: PhoneVerificationP
         setStep('verify');
       }
     } catch (error: any) {
+      console.error('خطأ غير متوقع في إرسال الكود:', error);
       toast({
         title: "خطأ",
-        description: "حدث خطأ غير متوقع",
+        description: `حدث خطأ غير متوقع: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -114,20 +124,23 @@ const PhoneVerification = ({ onSuccess, religion, username }: PhoneVerificationP
     
     try {
       const fullPhoneNumber = `${selectedCountry?.dialCode}${phoneNumber}`;
+      console.log('محاولة التحقق من الكود:', verificationCode);
       
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         phone: fullPhoneNumber,
         token: verificationCode,
         type: 'sms'
       });
 
       if (error) {
+        console.error('خطأ في التحقق:', error);
         toast({
           title: "خطأ في التحقق",
-          description: "كود التحقق غير صحيح",
+          description: `كود التحقق غير صحيح: ${error.message}`,
           variant: "destructive"
         });
       } else {
+        console.log('تم التحقق بنجاح:', data);
         toast({
           title: "تم التحقق بنجاح",
           description: "مرحباً بك في منصة المناظرات"
@@ -135,9 +148,10 @@ const PhoneVerification = ({ onSuccess, religion, username }: PhoneVerificationP
         onSuccess();
       }
     } catch (error: any) {
+      console.error('خطأ غير متوقع في التحقق:', error);
       toast({
         title: "خطأ في التحقق",
-        description: "حدث خطأ أثناء التحقق",
+        description: `حدث خطأ أثناء التحقق: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -152,27 +166,31 @@ const PhoneVerification = ({ onSuccess, religion, username }: PhoneVerificationP
     const fullPhoneNumber = `${selectedCountry.dialCode}${phoneNumber}`;
     
     try {
-      const { error } = await supabase.auth.resend({
+      console.log('إعادة إرسال الكود إلى:', fullPhoneNumber);
+      const { data, error } = await supabase.auth.resend({
         type: 'sms',
         phone: fullPhoneNumber
       });
 
       if (error) {
+        console.error('خطأ في إعادة الإرسال:', error);
         toast({
           title: "خطأ",
-          description: "فشل في إعادة إرسال الكود",
+          description: `فشل في إعادة إرسال الكود: ${error.message}`,
           variant: "destructive"
         });
       } else {
+        console.log('تم إعادة الإرسال بنجاح:', data);
         toast({
           title: "تم إعادة الإرسال",
           description: "تم إعادة إرسال كود التحقق"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('خطأ غير متوقع في إعادة الإرسال:', error);
       toast({
         title: "خطأ",
-        description: "حدث خطأ غير متوقع",
+        description: `حدث خطأ غير متوقع: ${error.message}`,
         variant: "destructive"
       });
     }

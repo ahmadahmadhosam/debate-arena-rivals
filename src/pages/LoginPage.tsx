@@ -52,7 +52,8 @@ const LoginPage = () => {
   }, [navigate]);
 
   const createFakeEmail = (account: string) => {
-    return `${account.toLowerCase().replace(/\s+/g, '')}@fakeuser.local`;
+    // استخدام نطاق أكثر قبولاً من Supabase
+    return `${account.toLowerCase().replace(/\s+/g, '')}@example.com`;
   };
 
   const handleLoginWithFakeAccount = async () => {
@@ -69,27 +70,32 @@ const LoginPage = () => {
     
     try {
       const fakeEmail = createFakeEmail(loginUsernameOrPhone);
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('محاولة تسجيل الدخول بالبريد:', fakeEmail);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: fakeEmail,
         password: loginPassword
       });
 
       if (error) {
+        console.error('خطأ في تسجيل الدخول:', error);
         toast({
           title: "خطأ في تسجيل الدخول",
           description: "اسم المستخدم أو كلمة المرور غير صحيحة",
           variant: "destructive"
         });
       } else {
+        console.log('نجح تسجيل الدخول:', data);
         toast({
           title: "نجح تسجيل الدخول",
           description: "مرحباً بك في منصة المناظرات"
         });
       }
     } catch (error: any) {
+      console.error('خطأ غير متوقع:', error);
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+        description: "حدث خطأ غير متوقع",
         variant: "destructive"
       });
     }
@@ -111,27 +117,40 @@ const LoginPage = () => {
     
     try {
       const fullPhoneNumber = `${loginCountry.dialCode}${loginUsernameOrPhone}`;
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('محاولة تسجيل الدخول بالرقم:', fullPhoneNumber);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         phone: fullPhoneNumber,
         password: loginPassword
       });
 
       if (error) {
-        toast({
-          title: "خطأ في تسجيل الدخول",
-          description: "رقم الهاتف أو كلمة المرور غير صحيحة",
-          variant: "destructive"
-        });
+        console.error('خطأ في تسجيل الدخول بالرقم:', error);
+        if (error.message.includes('Phone logins are disabled')) {
+          toast({
+            title: "تسجيل الدخول بالرقم معطل",
+            description: "يرجى استخدام الحساب الوهمي أو تفعيل تسجيل الدخول بالرقم في إعدادات Supabase",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "خطأ في تسجيل الدخول",
+            description: "رقم الهاتف أو كلمة المرور غير صحيحة",
+            variant: "destructive"
+          });
+        }
       } else {
+        console.log('نجح تسجيل الدخول بالرقم:', data);
         toast({
           title: "نجح تسجيل الدخول",
           description: "مرحباً بك في منصة المناظرات"
         });
       }
     } catch (error: any) {
+      console.error('خطأ غير متوقع في تسجيل الدخول بالرقم:', error);
       toast({
         title: "خطأ في تسجيل الدخول",
-        description: "رقم الهاتف أو كلمة المرور غير صحيحة",
+        description: "حدث خطأ غير متوقع",
         variant: "destructive"
       });
     }
@@ -171,8 +190,9 @@ const LoginPage = () => {
     
     try {
       const fakeEmail = createFakeEmail(registerFakeAccount);
+      console.log('محاولة إنشاء حساب بالبريد:', fakeEmail);
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: fakeEmail,
         password: registerPassword,
         options: {
@@ -186,6 +206,7 @@ const LoginPage = () => {
       });
 
       if (error) {
+        console.error('خطأ في إنشاء الحساب:', error);
         if (error.message.includes('already registered')) {
           toast({
             title: "خطأ في إنشاء الحساب",
@@ -195,20 +216,22 @@ const LoginPage = () => {
         } else {
           toast({
             title: "خطأ في إنشاء الحساب",
-            description: error.message,
+            description: `فشل في إنشاء الحساب: ${error.message}`,
             variant: "destructive"
           });
         }
       } else {
+        console.log('تم إنشاء الحساب بنجاح:', data);
         toast({
           title: "تم إنشاء الحساب بنجاح",
           description: "يمكنك الآن استخدام الحساب مباشرة"
         });
       }
     } catch (error: any) {
+      console.error('خطأ غير متوقع في إنشاء الحساب:', error);
       toast({
         title: "خطأ في إنشاء الحساب",
-        description: error.message || "حدث خطأ غير متوقع",
+        description: `حدث خطأ غير متوقع: ${error.message}`,
         variant: "destructive"
       });
     }
