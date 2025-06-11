@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -50,8 +49,8 @@ const LoginPage = () => {
       console.log('محاولة تسجيل الدخول باسم المستخدم:', loginUsername);
       
       const { data, error } = await supabase.rpc('verify_password', {
-        p_username: loginUsername.trim(),
-        p_password: loginPassword
+        username: loginUsername.trim(),
+        password: loginPassword
       });
 
       console.log('استجابة تسجيل الدخول:', { data, error });
@@ -134,9 +133,9 @@ const LoginPage = () => {
       console.log('محاولة إنشاء حساب جديد:', registerUsername);
       
       const { data, error } = await supabase.rpc('create_app_user', {
-        p_username: registerUsername.trim(),
-        p_password: registerPassword,
-        p_religion: religion
+        username: registerUsername.trim(),
+        password: registerPassword,
+        religion: religion
       });
 
       console.log('استجابة إنشاء الحساب:', { data, error });
