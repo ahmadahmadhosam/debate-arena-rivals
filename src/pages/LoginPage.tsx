@@ -48,8 +48,8 @@ const LoginPage = () => {
       console.log('محاولة تسجيل الدخول باسم المستخدم:', loginUsername);
       
       const { data, error } = await supabase.rpc('verify_password', {
-        p_username: loginUsername.trim(),
-        p_password: loginPassword
+        username: loginUsername.trim(),
+        password: loginPassword
       });
 
       if (error) {
