@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -50,8 +49,8 @@ const LoginPage = () => {
       console.log('محاولة تسجيل الدخول باسم المستخدم:', loginUsername);
       
       const { data, error } = await supabase.rpc('verify_password', {
-        p_username: loginUsername.trim(),
-        p_password: loginPassword
+        username: loginUsername.trim(),
+        password: loginPassword
       });
 
       console.log('استجابة تسجيل الدخول:', { data, error });
