@@ -6,22 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
-  // Login states
-  const [loginUsername, setLoginUsername] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  
-  // Register states
-  const [registerUsername, setRegisterUsername] = useState('');
-  const [registerPassword, setRegisterPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [religion, setReligion] = useState<'سني' | 'شيعي'>('سني');
-  
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -34,11 +25,20 @@ const LoginPage = () => {
     }
   }, [navigate]);
 
-  const handleLogin = async () => {
-    if (!loginUsername.trim() || !loginPassword.trim()) {
+  const handleEnterApp = async () => {
+    if (!username.trim()) {
       toast({
         title: "خطأ",
-        description: "يرجى ملء جميع الحقول",
+        description: "يرجى إدخال اسم المستخدم",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (username.trim().length < 3) {
+      toast({
+        title: "خطأ",
+        description: "اسم المستخدم يجب أن يكون 3 أحرف على الأقل",
         variant: "destructive"
       });
       return;
@@ -47,42 +47,69 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      console.log('محاولة تسجيل الدخول باسم المستخدم:', loginUsername);
+      console.log('محاولة التحقق من اسم المستخدم:', username);
       
-      const { data, error } = await supabase.rpc('verify_password', {
-        username: loginUsername.trim(),
-        password: loginPassword
-      });
+      // Check if username already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('app_users')
+        .select('username')
+        .eq('username', username.trim())
+        .maybeSingle();
 
-      console.log('استجابة تسجيل الدخول:', { data, error });
-
-      if (error) {
-        console.error('خطأ في تسجيل الدخول:', error);
+      if (checkError) {
+        console.error('خطأ في التحقق من اسم المستخدم:', checkError);
         toast({
-          title: "خطأ في تسجيل الدخول",
+          title: "خطأ",
           description: "حدث خطأ في النظام، يرجى المحاولة مرة أخرى",
           variant: "destructive"
         });
-      } else if (!data || data.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (existingUser) {
         toast({
-          title: "خطأ في تسجيل الدخول",
-          description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+          title: "خطأ",
+          description: "اسم المستخدم موجود مسبقاً، يرجى اختيار اسم آخر",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Create new user entry
+      const { data: newUser, error: insertError } = await supabase
+        .from('app_users')
+        .insert([
+          {
+            username: username.trim(),
+            password_hash: '', // Empty since we don't use passwords
+            religion: religion
+          }
+        ])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('خطأ في إنشاء المستخدم:', insertError);
+        toast({
+          title: "خطأ",
+          description: "حدث خطأ في إنشاء المستخدم، يرجى المحاولة مرة أخرى",
           variant: "destructive"
         });
       } else {
-        const userData = data[0];
-        console.log('نجح تسجيل الدخول:', userData);
+        console.log('تم إنشاء المستخدم بنجاح:', newUser);
         
         // Store user data in localStorage
         localStorage.setItem('app_user', JSON.stringify({
-          id: userData.user_id,
-          username: userData.user_username,
-          religion: userData.user_religion
+          id: newUser.id,
+          username: newUser.username,
+          religion: newUser.religion
         }));
         
         toast({
-          title: "نجح تسجيل الدخول",
-          description: `مرحباً ${userData.user_username}`,
+          title: "مرحباً بك",
+          description: `أهلاً ${newUser.username} في منصة المناظرات`,
           className: "bg-sky-500 text-white border-sky-600"
         });
         
@@ -91,95 +118,7 @@ const LoginPage = () => {
     } catch (error: any) {
       console.error('خطأ غير متوقع:', error);
       toast({
-        title: "خطأ في تسجيل الدخول",
-        description: "حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى",
-        variant: "destructive"
-      });
-    }
-    
-    setIsLoading(false);
-  };
-
-  const handleRegister = async () => {
-    if (!registerUsername.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
-      toast({
         title: "خطأ",
-        description: "يرجى ملء جميع الحقول",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (registerPassword !== confirmPassword) {
-      toast({
-        title: "خطأ",
-        description: "كلمة المرور غير متطابقة",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (registerPassword.length < 6) {
-      toast({
-        title: "خطأ",
-        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      console.log('محاولة إنشاء حساب جديد:', registerUsername);
-      
-      const { data, error } = await supabase.rpc('create_app_user', {
-        p_username: registerUsername.trim(),
-        p_password: registerPassword,
-        p_religion: religion
-      });
-
-      console.log('استجابة إنشاء الحساب:', { data, error });
-
-      if (error) {
-        console.error('خطأ في إنشاء الحساب:', error);
-        toast({
-          title: "خطأ في إنشاء الحساب",
-          description: "حدث خطأ في النظام، يرجى المحاولة مرة أخرى",
-          variant: "destructive"
-        });
-      } else if (data && data.length > 0) {
-        const result = data[0];
-        if (result.success) {
-          console.log('تم إنشاء الحساب بنجاح:', result.user_id);
-          
-          // Store user data in localStorage for automatic login
-          localStorage.setItem('app_user', JSON.stringify({
-            id: result.user_id,
-            username: registerUsername.trim(),
-            religion: religion
-          }));
-          
-          toast({
-            title: "تم إنشاء الحساب بنجاح",
-            description: `مرحباً ${registerUsername.trim()}، تم تسجيل الدخول تلقائياً`,
-            className: "bg-sky-500 text-white border-sky-600"
-          });
-          
-          // Navigate to dashboard automatically
-          navigate('/dashboard');
-        } else {
-          toast({
-            title: "خطأ في إنشاء الحساب",
-            description: result.error_message || "حدث خطأ غير معروف",
-            variant: "destructive"
-          });
-        }
-      }
-    } catch (error: any) {
-      console.error('خطأ غير متوقع في إنشاء الحساب:', error);
-      toast({
-        title: "خطأ في إنشاء الحساب",
         description: "حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى",
         variant: "destructive"
       });
@@ -213,136 +152,57 @@ const LoginPage = () => {
         <Card className="shadow-2xl backdrop-blur-sm bg-white bg-opacity-10 border border-white border-opacity-30 transform hover:scale-102 transition-all duration-300">
           <CardHeader>
             <CardTitle className="text-center text-white text-2xl drop-shadow-md">
-              مرحباً بك
+              ادخل إلى المنصة
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-30">
-                <TabsTrigger value="login" className="text-white font-semibold data-[state=active]:bg-white data-[state=active]:bg-opacity-30 data-[state=active]:text-white">تسجيل الدخول</TabsTrigger>
-                <TabsTrigger value="register" className="text-white font-semibold data-[state=active]:bg-white data-[state=active]:bg-opacity-30 data-[state=active]:text-white">إنشاء حساب</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login" className="space-y-4 mt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="login-username" className="text-white font-semibold drop-shadow-sm">اسم المستخدم</Label>
-                  <Input
-                    id="login-username"
-                    type="text"
-                    placeholder="أدخل اسم المستخدم"
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value)}
-                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
-                    disabled={isLoading}
-                  />
-                </div>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-white font-semibold drop-shadow-sm">اسم المستخدم</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="اختر اسم المستخدم الخاص بك"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
+                disabled={isLoading}
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-white font-semibold drop-shadow-sm">كلمة المرور</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="أدخل كلمة المرور"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleLogin()}
-                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
-                    disabled={isLoading}
-                  />
+            <div className="space-y-3">
+              <Label className="text-white font-semibold drop-shadow-sm">المذهب</Label>
+              <RadioGroup 
+                value={religion} 
+                onValueChange={(value: 'سني' | 'شيعي') => setReligion(value)}
+                className="flex space-x-reverse space-x-6"
+                disabled={isLoading}
+              >
+                <div className="flex items-center space-x-reverse space-x-2">
+                  <RadioGroupItem value="سني" id="sunni" className="border-2 border-white text-white" />
+                  <Label htmlFor="sunni" className="text-white font-semibold drop-shadow-sm">سني</Label>
                 </div>
-
-                <Button 
-                  onClick={handleLogin} 
-                  className="w-full bg-white bg-opacity-20 backdrop-blur-sm hover:bg-white hover:bg-opacity-30 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg border border-white border-opacity-30"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      جاري تسجيل الدخول...
-                    </>
-                  ) : (
-                    'تسجيل الدخول'
-                  )}
-                </Button>
-              </TabsContent>
-              
-              <TabsContent value="register" className="space-y-4 mt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="register-username" className="text-white font-semibold drop-shadow-sm">اسم المستخدم</Label>
-                  <Input
-                    id="register-username"
-                    type="text"
-                    placeholder="اختر اسم المستخدم"
-                    value={registerUsername}
-                    onChange={(e) => setRegisterUsername(e.target.value)}
-                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
-                    disabled={isLoading}
-                  />
+                <div className="flex items-center space-x-reverse space-x-2">
+                  <RadioGroupItem value="شيعي" id="shia" className="border-2 border-white text-white" />
+                  <Label htmlFor="shia" className="text-white font-semibold drop-shadow-sm">شيعي</Label>
                 </div>
-
-                <div className="space-y-3">
-                  <Label className="text-white font-semibold drop-shadow-sm">المذهب</Label>
-                  <RadioGroup 
-                    value={religion} 
-                    onValueChange={(value: 'سني' | 'شيعي') => setReligion(value)}
-                    className="flex space-x-reverse space-x-6"
-                    disabled={isLoading}
-                  >
-                    <div className="flex items-center space-x-reverse space-x-2">
-                      <RadioGroupItem value="سني" id="sunni" className="border-2 border-white text-white" />
-                      <Label htmlFor="sunni" className="text-white font-semibold drop-shadow-sm">سني</Label>
-                    </div>
-                    <div className="flex items-center space-x-reverse space-x-2">
-                      <RadioGroupItem value="شيعي" id="shia" className="border-2 border-white text-white" />
-                      <Label htmlFor="shia" className="text-white font-semibold drop-shadow-sm">شيعي</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                    
-                <div className="space-y-2">
-                  <Label htmlFor="register-password" className="text-white font-semibold drop-shadow-sm">كلمة المرور</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    placeholder="أدخل كلمة المرور"
-                    value={registerPassword}
-                    onChange={(e) => setRegisterPassword(e.target.value)}
-                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
-                    disabled={isLoading}
-                  />
-                </div>
+              </RadioGroup>
+            </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password" className="text-white font-semibold drop-shadow-sm">تأكيد كلمة المرور</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    placeholder="أعد إدخال كلمة المرور"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleRegister()}
-                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
-                    disabled={isLoading}
-                  />
-                </div>
-                
-                <Button 
-                  onClick={handleRegister} 
-                  className="w-full bg-white bg-opacity-20 backdrop-blur-sm hover:bg-white hover:bg-opacity-30 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg border border-white border-opacity-30"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      جاري إنشاء الحساب...
-                    </>
-                  ) : (
-                    'إنشاء حساب'
-                  )}
-                </Button>
-              </TabsContent>
-            </Tabs>
+            <Button 
+              onClick={handleEnterApp} 
+              className="w-full bg-white bg-opacity-20 backdrop-blur-sm hover:bg-white hover:bg-opacity-30 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg border border-white border-opacity-30"
+              disabled={isLoading}
+              onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleEnterApp()}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  جاري الدخول...
+                </>
+              ) : (
+                'دخول المنصة'
+              )}
+            </Button>
           </CardContent>
         </Card>
 

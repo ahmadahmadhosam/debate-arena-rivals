@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Users, MessageCircle, UserCheck, Gamepad2 } from 'lucide-react';
+import { Settings, Users, MessageCircle, UserCheck, Gamepad2, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { supabaseDebateManager } from '@/services/supabaseDebateManager';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +18,6 @@ const DashboardPage = () => {
   const { toast } = useToast();
   
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Settings for debates
@@ -36,47 +35,40 @@ const DashboardPage = () => {
 
   useEffect(() => {
     checkAuth();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate('/');
-      } else {
-        fetchUserProfile(session.user.id);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const appUser = localStorage.getItem('app_user');
+    if (!appUser) {
       navigate('/');
       return;
     }
     
-    setUser(session.user);
-    await fetchUserProfile(session.user.id);
+    try {
+      const userData = JSON.parse(appUser);
+      setUser(userData);
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+      localStorage.removeItem('app_user');
+      navigate('/');
+      return;
+    }
+    
     setIsLoading(false);
   };
 
-  const fetchUserProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching profile:', error);
-    } else {
-      setProfile(data);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('app_user');
+    toast({
+      title: "تم تسجيل الخروج",
+      description: "وداعاً، نتطلع لرؤيتك مرة أخرى",
+      className: "bg-sky-500 text-white border-sky-600"
+    });
+    navigate('/');
   };
 
   const createPrivateDebate = async () => {
-    if (!user || !profile) return;
+    if (!user) return;
     
     const settings = {
       preparationTime,
@@ -88,7 +80,7 @@ const DashboardPage = () => {
 
     const code = await supabaseDebateManager.createPrivateDebate(
       user.id,
-      profile.religion,
+      user.religion,
       settings
     );
 
@@ -108,7 +100,7 @@ const DashboardPage = () => {
   };
 
   const createRandomDebate = async () => {
-    if (!user || !profile) return;
+    if (!user) return;
     
     const settings = {
       preparationTime,
@@ -121,7 +113,7 @@ const DashboardPage = () => {
 
     const code = await supabaseDebateManager.createRandomDebate(
       user.id,
-      profile.religion,
+      user.religion,
       settings
     );
 
@@ -141,7 +133,7 @@ const DashboardPage = () => {
   };
 
   const joinDebate = async () => {
-    if (!joinCode.trim() || !user || !profile) {
+    if (!joinCode.trim() || !user) {
       toast({
         title: "خطأ",
         description: "يرجى إدخال كود المناظرة",
@@ -153,7 +145,7 @@ const DashboardPage = () => {
     const debate = await supabaseDebateManager.joinDebate(
       joinCode,
       user.id,
-      profile.religion
+      user.religion
     );
 
     if (debate) {
@@ -173,59 +165,71 @@ const DashboardPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-sky-100 to-sky-200 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-blue-600 dark:text-blue-400 font-semibold">جاري التحميل...</p>
+          <div className="w-16 h-16 border-4 border-sky-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-sky-600 font-semibold">جاري التحميل...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-sky-100 to-sky-200 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-4 -left-4 w-96 h-96 bg-blue-300 dark:bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-8 -right-4 w-96 h-96 bg-purple-300 dark:bg-purple-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-indigo-300 dark:bg-indigo-700 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute -top-4 -left-4 w-96 h-96 bg-sky-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-8 -right-4 w-96 h-96 bg-sky-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-sky-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
       </div>
 
       <div className="container mx-auto px-4 py-8 relative z-10">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center space-x-reverse space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-800 rounded-full flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-2xl">🕌</span>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-blue-800 dark:text-blue-200" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
-                أهلاً {profile?.username || 'بك'}
+              <h1 className="text-3xl font-bold text-black drop-shadow-sm">
+                أهلاً {user?.username || 'بك'}
               </h1>
-              <p className="text-blue-600 dark:text-blue-400" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
-                المذهب: {profile?.religion}
+              <p className="text-black/80 drop-shadow-sm">
+                المذهب: {user?.religion}
               </p>
             </div>
           </div>
           
-          <Button
-            onClick={() => setIsSettingsOpen(true)}
-            variant="outline"
-            size="lg"
-            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 transform hover:scale-105 transition-all duration-200"
-          >
-            <Settings className="h-5 w-5 ml-2" />
-            <span style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>الإعدادات</span>
-          </Button>
+          <div className="flex space-x-reverse space-x-4">
+            <Button
+              onClick={() => setIsSettingsOpen(true)}
+              variant="outline"
+              size="lg"
+              className="bg-white/80 backdrop-blur-sm border-2 border-sky-300 hover:bg-sky-50 transform hover:scale-105 transition-all duration-200 text-black"
+            >
+              <Settings className="h-5 w-5 ml-2" />
+              <span className="drop-shadow-sm">الإعدادات</span>
+            </Button>
+            
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size="lg"
+              className="bg-red-50/80 backdrop-blur-sm border-2 border-red-300 hover:bg-red-100 transform hover:scale-105 transition-all duration-200 text-red-700"
+            >
+              <LogOut className="h-5 w-5 ml-2" />
+              <span className="drop-shadow-sm">خروج</span>
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Main Actions */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <Card className="shadow-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-blue-200 dark:border-blue-700">
+            <Card className="shadow-2xl bg-white/90 backdrop-blur-sm border-2 border-sky-200">
               <CardHeader>
-                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                <CardTitle className="text-black flex items-center drop-shadow-sm">
                   <Gamepad2 className="h-6 w-6 ml-3" />
                   إجراءات سريعة
                 </CardTitle>
@@ -235,7 +239,6 @@ const DashboardPage = () => {
                   <Button
                     onClick={() => navigate('/random-debates')}
                     className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                   >
                     <Users className="h-5 w-5 ml-2" />
                     المناظرات العشوائية
@@ -246,7 +249,6 @@ const DashboardPage = () => {
                   <Button
                     onClick={createRandomDebate}
                     className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                   >
                     إنشاء عشوائية
                   </Button>
@@ -254,7 +256,6 @@ const DashboardPage = () => {
                   <Button
                     onClick={createPrivateDebate}
                     className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                    style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                   >
                     إنشاء خاصة
                   </Button>
@@ -263,16 +264,16 @@ const DashboardPage = () => {
             </Card>
 
             {/* Join Debate */}
-            <Card className="shadow-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-blue-200 dark:border-blue-700">
+            <Card className="shadow-2xl bg-white/90 backdrop-blur-sm border-2 border-sky-200">
               <CardHeader>
-                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                <CardTitle className="text-black flex items-center drop-shadow-sm">
                   <UserCheck className="h-6 w-6 ml-3" />
                   الانضمام لمناظرة
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="join-code" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  <Label htmlFor="join-code" className="text-black font-semibold drop-shadow-sm">
                     كود المناظرة
                   </Label>
                   <Input
@@ -280,14 +281,13 @@ const DashboardPage = () => {
                     placeholder="أدخل كود المناظرة"
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600 text-center font-mono text-lg"
+                    className="border-2 border-sky-300 focus:border-sky-500 text-center font-mono text-lg text-black"
                     onKeyPress={(e) => e.key === 'Enter' && joinDebate()}
                   />
                 </div>
                 <Button
                   onClick={joinDebate}
                   className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                 >
                   <MessageCircle className="h-5 w-5 ml-2" />
                   انضم للمناظرة
@@ -297,16 +297,16 @@ const DashboardPage = () => {
           </div>
 
           {/* Settings Panel */}
-          <Card className="shadow-2xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-blue-200 dark:border-blue-700">
+          <Card className="shadow-2xl bg-white/90 backdrop-blur-sm border-2 border-sky-200">
             <CardHeader>
-              <CardTitle className="text-blue-700 dark:text-blue-300" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+              <CardTitle className="text-black drop-shadow-sm">
                 إعدادات المناظرة
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Preparation Time */}
               <div className="space-y-3">
-                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                <Label className="text-black font-semibold drop-shadow-sm">
                   وقت التحضير: {preparationTime} دقائق
                 </Label>
                 <Slider
@@ -321,7 +321,7 @@ const DashboardPage = () => {
 
               {/* Round Time */}
               <div className="space-y-3">
-                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                <Label className="text-black font-semibold drop-shadow-sm">
                   مدة الجولة: {roundTime} دقائق
                 </Label>
                 <Slider
@@ -336,7 +336,7 @@ const DashboardPage = () => {
 
               {/* Round Count */}
               <div className="space-y-3">
-                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                <Label className="text-black font-semibold drop-shadow-sm">
                   عدد الجولات: {roundCount}
                 </Label>
                 <Slider
@@ -351,7 +351,7 @@ const DashboardPage = () => {
 
               {/* Final Time */}
               <div className="space-y-3">
-                <Label className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                <Label className="text-black font-semibold drop-shadow-sm">
                   وقت الختام: {finalTime} دقائق
                 </Label>
                 <Slider
@@ -366,7 +366,7 @@ const DashboardPage = () => {
 
               {/* Auto Mic */}
               <div className="flex items-center justify-between">
-                <Label htmlFor="auto-mic" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                <Label htmlFor="auto-mic" className="text-black font-semibold drop-shadow-sm">
                   تحكم تلقائي بالميكروفون
                 </Label>
                 <Switch
