@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -133,9 +134,9 @@ const LoginPage = () => {
       console.log('محاولة إنشاء حساب جديد:', registerUsername);
       
       const { data, error } = await supabase.rpc('create_app_user', {
-        username: registerUsername.trim(),
-        password: registerPassword,
-        religion: religion
+        p_username: registerUsername.trim(),
+        p_password: registerPassword,
+        p_religion: religion
       });
 
       console.log('استجابة إنشاء الحساب:', { data, error });
