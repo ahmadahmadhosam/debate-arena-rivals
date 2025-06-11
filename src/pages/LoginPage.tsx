@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -49,8 +50,8 @@ const LoginPage = () => {
       console.log('محاولة تسجيل الدخول باسم المستخدم:', loginUsername);
       
       const { data, error } = await supabase.rpc('verify_password', {
-        username: loginUsername.trim(),
-        password: loginPassword
+        p_username: loginUsername.trim(),
+        p_password: loginPassword
       });
 
       console.log('استجابة تسجيل الدخول:', { data, error });
@@ -81,7 +82,8 @@ const LoginPage = () => {
         
         toast({
           title: "نجح تسجيل الدخول",
-          description: `مرحباً ${userData.user_username}`
+          description: `مرحباً ${userData.user_username}`,
+          className: "bg-sky-500 text-white border-sky-600"
         });
         
         navigate('/dashboard');
@@ -160,7 +162,8 @@ const LoginPage = () => {
           
           toast({
             title: "تم إنشاء الحساب بنجاح",
-            description: `مرحباً ${registerUsername.trim()}، تم تسجيل الدخول تلقائياً`
+            description: `مرحباً ${registerUsername.trim()}، تم تسجيل الدخول تلقائياً`,
+            className: "bg-sky-500 text-white border-sky-600"
           });
           
           // Navigate to dashboard automatically
@@ -186,56 +189,56 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-4 -left-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
-        <div className="absolute -bottom-8 -right-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse"></div>
+        <div className="absolute -top-4 -left-4 w-72 h-72 bg-white rounded-full mix-blend-overlay filter blur-xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-8 -right-4 w-72 h-72 bg-white rounded-full mix-blend-overlay filter blur-xl opacity-20 animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-white rounded-full mix-blend-overlay filter blur-xl opacity-20 animate-pulse"></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-8 animate-fadeIn">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform">
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="w-20 h-20 bg-white bg-opacity-20 backdrop-blur-sm rounded-full mx-auto mb-4 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform border border-white border-opacity-30">
             <span className="text-white font-bold text-3xl">🕌</span>
           </div>
-          <h1 className="text-4xl font-bold text-blue-800 dark:text-blue-200 mb-2" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+          <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
             منصة المناظرات الإسلامية
           </h1>
-          <p className="text-gray-600 dark:text-gray-300" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+          <p className="text-white text-opacity-90 drop-shadow-md">
             منصة للحوار البناء بين المذاهب الإسلامية
           </p>
         </div>
 
-        <Card className="shadow-2xl backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border-2 border-blue-200 dark:border-blue-700 transform hover:scale-102 transition-all duration-300">
+        <Card className="shadow-2xl backdrop-blur-sm bg-white bg-opacity-10 border border-white border-opacity-30 transform hover:scale-102 transition-all duration-300">
           <CardHeader>
-            <CardTitle className="text-center text-blue-600 dark:text-blue-400 text-2xl" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+            <CardTitle className="text-center text-white text-2xl drop-shadow-md">
               مرحباً بك
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-blue-100 dark:bg-blue-900">
-                <TabsTrigger value="login" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>تسجيل الدخول</TabsTrigger>
-                <TabsTrigger value="register" className="text-blue-700 dark:text-blue-300 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>إنشاء حساب</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-30">
+                <TabsTrigger value="login" className="text-white font-semibold data-[state=active]:bg-white data-[state=active]:bg-opacity-30 data-[state=active]:text-white">تسجيل الدخول</TabsTrigger>
+                <TabsTrigger value="register" className="text-white font-semibold data-[state=active]:bg-white data-[state=active]:bg-opacity-30 data-[state=active]:text-white">إنشاء حساب</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login" className="space-y-4 mt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="login-username" className="text-blue-700 dark:text-blue-300 font-semibold">اسم المستخدم</Label>
+                  <Label htmlFor="login-username" className="text-white font-semibold drop-shadow-sm">اسم المستخدم</Label>
                   <Input
                     id="login-username"
                     type="text"
                     placeholder="أدخل اسم المستخدم"
                     value={loginUsername}
                     onChange={(e) => setLoginUsername(e.target.value)}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
                     disabled={isLoading}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-blue-700 dark:text-blue-300 font-semibold">كلمة المرور</Label>
+                  <Label htmlFor="login-password" className="text-white font-semibold drop-shadow-sm">كلمة المرور</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -243,16 +246,15 @@ const LoginPage = () => {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleLogin()}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
                     disabled={isLoading}
                   />
                 </div>
 
                 <Button 
                   onClick={handleLogin} 
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                  className="w-full bg-white bg-opacity-20 backdrop-blur-sm hover:bg-white hover:bg-opacity-30 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg border border-white border-opacity-30"
                   disabled={isLoading}
-                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                 >
                   {isLoading ? (
                     <>
@@ -267,20 +269,20 @@ const LoginPage = () => {
               
               <TabsContent value="register" className="space-y-4 mt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="register-username" className="text-blue-700 dark:text-blue-300 font-semibold">اسم المستخدم</Label>
+                  <Label htmlFor="register-username" className="text-white font-semibold drop-shadow-sm">اسم المستخدم</Label>
                   <Input
                     id="register-username"
                     type="text"
                     placeholder="اختر اسم المستخدم"
                     value={registerUsername}
                     onChange={(e) => setRegisterUsername(e.target.value)}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
                     disabled={isLoading}
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-blue-700 dark:text-blue-300 font-semibold">المذهب</Label>
+                  <Label className="text-white font-semibold drop-shadow-sm">المذهب</Label>
                   <RadioGroup 
                     value={religion} 
                     onValueChange={(value: 'سني' | 'شيعي') => setReligion(value)}
@@ -288,31 +290,31 @@ const LoginPage = () => {
                     disabled={isLoading}
                   >
                     <div className="flex items-center space-x-reverse space-x-2">
-                      <RadioGroupItem value="سني" id="sunni" className="border-2 border-blue-400" />
-                      <Label htmlFor="sunni" className="text-blue-700 dark:text-blue-300 font-semibold">سني</Label>
+                      <RadioGroupItem value="سني" id="sunni" className="border-2 border-white text-white" />
+                      <Label htmlFor="sunni" className="text-white font-semibold drop-shadow-sm">سني</Label>
                     </div>
                     <div className="flex items-center space-x-reverse space-x-2">
-                      <RadioGroupItem value="شيعي" id="shia" className="border-2 border-blue-400" />
-                      <Label htmlFor="shia" className="text-blue-700 dark:text-blue-300 font-semibold">شيعي</Label>
+                      <RadioGroupItem value="شيعي" id="shia" className="border-2 border-white text-white" />
+                      <Label htmlFor="shia" className="text-white font-semibold drop-shadow-sm">شيعي</Label>
                     </div>
                   </RadioGroup>
                 </div>
                     
                 <div className="space-y-2">
-                  <Label htmlFor="register-password" className="text-blue-700 dark:text-blue-300 font-semibold">كلمة المرور</Label>
+                  <Label htmlFor="register-password" className="text-white font-semibold drop-shadow-sm">كلمة المرور</Label>
                   <Input
                     id="register-password"
                     type="password"
                     placeholder="أدخل كلمة المرور"
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
                     disabled={isLoading}
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password" className="text-blue-700 dark:text-blue-300 font-semibold">تأكيد كلمة المرور</Label>
+                  <Label htmlFor="confirm-password" className="text-white font-semibold drop-shadow-sm">تأكيد كلمة المرور</Label>
                   <Input
                     id="confirm-password"
                     type="password"
@@ -320,16 +322,15 @@ const LoginPage = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleRegister()}
-                    className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    className="bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-40 text-white placeholder:text-white placeholder:text-opacity-70 focus:border-white focus:border-opacity-60"
                     disabled={isLoading}
                   />
                 </div>
                 
                 <Button 
                   onClick={handleRegister} 
-                  className="w-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                  className="w-full bg-white bg-opacity-20 backdrop-blur-sm hover:bg-white hover:bg-opacity-30 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg border border-white border-opacity-30"
                   disabled={isLoading}
-                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                 >
                   {isLoading ? (
                     <>
@@ -345,8 +346,8 @@ const LoginPage = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6 text-gray-600 dark:text-gray-300">
-          <p style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>منصة آمنة للحوار الهادف والمثمر</p>
+        <div className="text-center mt-6 text-white text-opacity-90">
+          <p className="drop-shadow-md">منصة آمنة للحوار الهادف والمثمر</p>
         </div>
       </div>
     </div>
