@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
   // Login states
@@ -48,9 +50,11 @@ const LoginPage = () => {
       console.log('محاولة تسجيل الدخول باسم المستخدم:', loginUsername);
       
       const { data, error } = await supabase.rpc('verify_password', {
-        username: loginUsername.trim(),
-        password: loginPassword
+        p_username: loginUsername.trim(),
+        p_password: loginPassword
       });
+
+      console.log('استجابة تسجيل الدخول:', { data, error });
 
       if (error) {
         console.error('خطأ في تسجيل الدخول:', error);
@@ -133,6 +137,8 @@ const LoginPage = () => {
         p_password: registerPassword,
         p_religion: religion
       });
+
+      console.log('استجابة إنشاء الحساب:', { data, error });
 
       if (error) {
         console.error('خطأ في إنشاء الحساب:', error);
@@ -225,6 +231,7 @@ const LoginPage = () => {
                     value={loginUsername}
                     onChange={(e) => setLoginUsername(e.target.value)}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -236,8 +243,9 @@ const LoginPage = () => {
                     placeholder="أدخل كلمة المرور"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                    onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleLogin()}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -247,7 +255,14 @@ const LoginPage = () => {
                   disabled={isLoading}
                   style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                 >
-                  {isLoading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      جاري تسجيل الدخول...
+                    </>
+                  ) : (
+                    'تسجيل الدخول'
+                  )}
                 </Button>
               </TabsContent>
               
@@ -261,6 +276,7 @@ const LoginPage = () => {
                     value={registerUsername}
                     onChange={(e) => setRegisterUsername(e.target.value)}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -270,6 +286,7 @@ const LoginPage = () => {
                     value={religion} 
                     onValueChange={(value: 'سني' | 'شيعي') => setReligion(value)}
                     className="flex space-x-reverse space-x-6"
+                    disabled={isLoading}
                   >
                     <div className="flex items-center space-x-reverse space-x-2">
                       <RadioGroupItem value="سني" id="sunni" className="border-2 border-blue-400" />
@@ -291,6 +308,7 @@ const LoginPage = () => {
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    disabled={isLoading}
                   />
                 </div>
                 
@@ -302,8 +320,9 @@ const LoginPage = () => {
                     placeholder="أعد إدخال كلمة المرور"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
+                    onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleRegister()}
                     className="border-2 border-blue-300 focus:border-blue-500 dark:border-blue-600"
+                    disabled={isLoading}
                   />
                 </div>
                 
@@ -313,7 +332,14 @@ const LoginPage = () => {
                   disabled={isLoading}
                   style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
                 >
-                  {isLoading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      جاري إنشاء الحساب...
+                    </>
+                  ) : (
+                    'إنشاء حساب'
+                  )}
                 </Button>
               </TabsContent>
             </Tabs>
