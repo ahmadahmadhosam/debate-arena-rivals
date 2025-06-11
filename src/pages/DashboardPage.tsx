@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Settings, Users, MessageCircle, UserCheck, Gamepad2, LogOut } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { supabaseDebateManager } from '@/services/supabaseDebateManager';
 import { useToast } from '@/hooks/use-toast';
 import SettingsModal from '@/components/SettingsModal';

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,6 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Moon, Sun, LogOut, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface SettingsModalProps {
@@ -68,22 +66,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     setIsLoggingOut(true);
     
     try {
-      const { error } = await supabase.auth.signOut();
+      // Clear local storage
+      localStorage.removeItem('app_user');
       
-      if (error) {
-        toast({
-          title: "خطأ في تسجيل الخروج",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "تم تسجيل الخروج",
-          description: "شكراً لاستخدام منصة المناظرات"
-        });
-        onClose();
-        navigate('/');
-      }
+      toast({
+        title: "تم تسجيل الخروج",
+        description: "شكراً لاستخدام منصة المناظرات"
+      });
+      onClose();
+      navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
       toast({
