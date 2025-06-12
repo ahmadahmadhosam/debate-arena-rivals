@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Loader2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -76,7 +75,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
       {isPrivateDebate && debateCode && (
         <div className="absolute top-6 right-6 bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
           <div className="flex items-center space-x-reverse space-x-3">
-            <span className="text-white font-bold text-lg font-mono tracking-wider border border-white/50 rounded px-3 py-1">
+            <span className="text-white font-bold text-lg font-mono tracking-wider border border-white/50 rounded px-3 py-1 text-outlined">
               {debateCode}
             </span>
             <Button
@@ -92,7 +91,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
               )}
             </Button>
           </div>
-          <p className="text-white/80 text-xs mt-1 border border-white/30 rounded px-2 py-1 inline-block">
+          <p className="text-white/80 text-xs mt-1 border border-white/30 rounded px-2 py-1 inline-block text-outlined">
             كود المناظرة
           </p>
         </div>
@@ -106,24 +105,24 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
         
         {/* رسالة الانتظار */}
         <div className="bg-white/20 backdrop-blur-sm rounded-3xl p-8 border-2 border-white/30 shadow-2xl">
-          <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg border border-white/40 rounded-lg px-4 py-2 inline-block">
+          <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg border border-white/40 rounded-lg px-4 py-2 inline-block text-outlined">
             {message}
           </h2>
         </div>
         
-        {/* نصيحة اليوم مع التأثيرات البصرية */}
+        {/* نصيحة اليوم مع التأثيرات البصرية المحسنة */}
         <div className="bg-white/20 backdrop-blur-sm rounded-3xl p-8 border-2 border-white/40 shadow-2xl relative overflow-hidden">
           {/* تأثير الضوء المتحرك */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform skew-x-12 animate-pulse"></div>
           
-          <h3 className="text-xl font-bold text-white/95 mb-6 relative z-10 border border-white/50 rounded-lg px-4 py-2 inline-block">
+          <h3 className="text-xl font-bold text-white/95 mb-6 relative z-10 border border-white/50 rounded-lg px-4 py-2 inline-block text-outlined">
             نصيحة اليوم:
           </h3>
           
           <div className="relative z-10 min-h-[60px] flex items-center justify-center">
             <p className="text-white text-xl font-medium leading-relaxed text-center relative border border-white/50 rounded-lg px-4 py-3">
               <span 
-                className="bg-gradient-to-r from-yellow-200 via-white to-sky-200 bg-clip-text text-transparent animate-pulse"
+                className="bg-gradient-to-r from-yellow-200 via-white to-sky-200 bg-clip-text text-transparent animate-pulse text-outlined"
                 style={{
                   textShadow: '0 0 20px rgba(255,255,255,0.5)',
                   filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))'
@@ -132,7 +131,7 @@ const WaitingScreen: React.FC<WaitingScreenProps> = ({ message, debateCode, isPr
                 "{displayedText}"
               </span>
               {isTyping && (
-                <span className="animate-pulse text-white ml-1">|</span>
+                <span className="animate-pulse text-white ml-1 text-outlined">|</span>
               )}
             </p>
           </div>

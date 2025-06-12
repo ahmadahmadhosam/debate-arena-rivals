@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -11,15 +10,17 @@ interface MediaControlsProps {
   canDisableAutoMic?: boolean;
   onMicToggle?: (enabled: boolean) => void;
   onCameraToggle?: (enabled: boolean) => void;
+  cameraOptional?: boolean;
 }
 
 const MediaControls: React.FC<MediaControlsProps> = ({
   isMyTurn,
   autoMicControl = true,
   currentPhase = 'waiting',
-  canDisableAutoMic = true,
+  canDisableAutoMic = false,
   onMicToggle,
-  onCameraToggle
+  onCameraToggle,
+  cameraOptional = true
 }) => {
   const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
@@ -35,16 +36,21 @@ const MediaControls: React.FC<MediaControlsProps> = ({
     setIsAutoMicEnabled(autoMicControl);
   }, [autoMicControl]);
 
-  // التحكم التلقائي في الميكروفون
+  // التحكم التلقائي في الميكروفون المحسن
   useEffect(() => {
     if (isAutoMicEnabled) {
+      // الميكروفون مفتوح دائماً في وقت التحضير والنهاية
       if (currentPhase === 'preparation' || currentPhase === 'final') {
         setIsMicEnabled(true);
         onMicToggle?.(true);
-      } else if (currentPhase === 'debate') {
+      } 
+      // في المناظرة، يفتح فقط لمن عليه الدور
+      else if (currentPhase === 'debate') {
         setIsMicEnabled(isMyTurn);
         onMicToggle?.(isMyTurn);
-      } else {
+      } 
+      // مغلق في باقي الأوقات
+      else {
         setIsMicEnabled(false);
         onMicToggle?.(false);
       }
@@ -101,7 +107,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   };
 
   const toggleMic = async () => {
-    // منع التلاعب بالميكروفون أثناء المناظرة إذا كان تلقائياً
+    // منع التلاعب بالميكروفون أثناء المناظرة إذا كان تلقائياً ولا يحق له التحدث
     if (isAutoMicEnabled && currentPhase === 'debate' && !isMyTurn) {
       return;
     }
@@ -155,12 +161,6 @@ const MediaControls: React.FC<MediaControlsProps> = ({
     console.log(`الكاميرا ${newState ? 'مفعلة' : 'معطلة'}`);
   };
 
-  const toggleAutoMic = () => {
-    if (canDisableAutoMic) {
-      setIsAutoMicEnabled(!isAutoMicEnabled);
-    }
-  };
-
   const toggleAutoCamera = () => {
     setIsAutoCameraEnabled(!isAutoCameraEnabled);
     if (!isAutoCameraEnabled) {
@@ -184,6 +184,16 @@ const MediaControls: React.FC<MediaControlsProps> = ({
     currentPhase === 'final' ||
     (currentPhase === 'debate' && isMyTurn);
 
+  const getPhaseMessage = () => {
+    if (currentPhase === 'preparation') return 'وقت التحضير - الميكروفون مفتوح للجميع';
+    if (currentPhase === 'final') return 'النقاش النهائي - الميكروفون مفتوح للجميع';
+    if (currentPhase === 'debate') return isMyTurn ? 'دورك للحديث' : 'انتظر دورك - الميكروفون مغلق';
+    if (currentPhase === 'waiting') return 'في الانتظار';
+    if (currentPhase === 'choosing') return 'جاري اختيار من سيبدأ';
+    if (currentPhase === 'ended') return 'انتهت المناظرة';
+    return '';
+  };
+
   return (
     <div className="space-y-6">
       {/* معاينة الكاميرا */}
@@ -198,7 +208,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
               className="w-40 h-30 bg-gray-200 rounded-lg object-cover border-2 border-islamic-gold-300 shadow-lg"
             />
             <div className="absolute top-2 right-2 bg-red-500 w-3 h-3 rounded-full animate-pulse"></div>
-            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded text-outlined">
               مباشر
             </div>
           </div>
@@ -215,7 +225,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
             !canToggleMic 
               ? 'opacity-50 cursor-not-allowed' 
               : 'hover:scale-110'
-          } transition-all duration-200 shadow-lg`}
+          } transition-all duration-200 shadow-lg text-outlined`}
           disabled={!canToggleMic}
         >
           {isMicEnabled ? (
@@ -225,75 +235,62 @@ const MediaControls: React.FC<MediaControlsProps> = ({
           )}
         </Button>
 
-        <Button
-          onClick={toggleCamera}
-          variant={isCameraEnabled ? "default" : "outline"}
-          size="lg"
-          className="w-16 h-16 rounded-full hover:scale-110 transition-all duration-200 shadow-lg"
-        >
-          {isCameraEnabled ? (
-            <Camera className="h-7 w-7" />
-          ) : (
-            <CameraOff className="h-7 w-7" />
-          )}
-        </Button>
+        {cameraOptional && (
+          <Button
+            onClick={toggleCamera}
+            variant={isCameraEnabled ? "default" : "outline"}
+            size="lg"
+            className="w-16 h-16 rounded-full hover:scale-110 transition-all duration-200 shadow-lg text-outlined"
+          >
+            {isCameraEnabled ? (
+              <Camera className="h-7 w-7" />
+            ) : (
+              <CameraOff className="h-7 w-7" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* رسائل الخطأ */}
       {permissionError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-xs text-center">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-xs text-center text-outlined">
           {permissionError}
         </div>
       )}
 
       {/* معلومات الحالة */}
       <div className="text-xs text-center space-y-2">
-        <div className={`font-medium ${
+        <div className={`font-medium text-outlined ${
           currentPhase === 'preparation' || currentPhase === 'final' 
             ? 'text-blue-600' 
             : isMyTurn 
               ? 'text-green-600' 
               : 'text-orange-600'
         }`}>
-          {currentPhase === 'preparation' && 'وقت التحضير - الميكروفون مفتوح'}
-          {currentPhase === 'final' && 'النقاش النهائي - الميكروفون مفتوح'}
-          {currentPhase === 'debate' && (isMyTurn ? 'دورك للحديث' : 'انتظر دورك')}
-          {currentPhase === 'waiting' && 'في الانتظار'}
-          {currentPhase === 'choosing' && 'جاري اختيار من سيبدأ'}
-          {currentPhase === 'ended' && 'انتهت المناظرة'}
+          {getPhaseMessage()}
         </div>
         
         {hasPermissions && (
-          <div className="text-green-600">✓ تم منح الإذن للوصول للميديا</div>
+          <div className="text-green-600 text-outlined">✓ تم منح الإذن للوصول للميديا</div>
         )}
       </div>
 
       {/* خيارات التحكم */}
       <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-        <h4 className="text-sm font-medium text-center">خيارات التحكم</h4>
+        <h4 className="text-sm font-medium text-center text-outlined">خيارات التحكم</h4>
         
-        <div className="flex items-center justify-between">
-          <span className="text-xs">
-            تحكم تلقائي في الميكروفون
-            {!canDisableAutoMic && <span className="text-orange-600"> (مؤمن)</span>}
-          </span>
-          <Switch
-            checked={isAutoMicEnabled}
-            onCheckedChange={toggleAutoMic}
-            disabled={!canDisableAutoMic}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-xs">تشغيل الكاميرا تلقائياً</span>
-          <Switch
-            checked={isAutoCameraEnabled}
-            onCheckedChange={toggleAutoCamera}
-          />
-        </div>
+        {cameraOptional && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-outlined">تشغيل الكاميرا تلقائياً</span>
+            <Switch
+              checked={isAutoCameraEnabled}
+              onCheckedChange={toggleAutoCamera}
+            />
+          </div>
+        )}
 
         {isAutoMicEnabled && (
-          <div className="text-xs text-muted-foreground text-center mt-2">
+          <div className="text-xs text-muted-foreground text-center mt-2 text-outlined">
             {canDisableAutoMic 
               ? 'الميكروفون مفتوح في وقت التحضير والنهاية، ومتحكم به حسب الدور في المناظرة'
               : 'الميكروفون التلقائي مؤمن من إعدادات المناظرة'

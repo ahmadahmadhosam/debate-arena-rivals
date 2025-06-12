@@ -18,17 +18,18 @@ const DashboardPage = () => {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Settings for debates
+  // إعدادات المناظرة المحسنة
   const [preparationTime, setPreparationTime] = useState(5);
   const [roundTime, setRoundTime] = useState(3);
   const [roundCount, setRoundCount] = useState(3);
   const [finalTime, setFinalTime] = useState(5);
   const [autoMic, setAutoMic] = useState(true);
+  const [cameraOptional, setCameraOptional] = useState(true);
   
-  // Join debate
+  // الانضمام للمناظرة
   const [joinCode, setJoinCode] = useState('');
   
-  // Settings modal
+  // نافذة الإعدادات
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -73,7 +74,8 @@ const DashboardPage = () => {
       roundTime,
       roundCount,
       finalTime,
-      autoMic
+      autoMic,
+      cameraOptional
     };
 
     const code = await supabaseDebateManager.createPrivateDebate(
@@ -106,6 +108,7 @@ const DashboardPage = () => {
       roundCount,
       finalTime,
       autoMic,
+      cameraOptional,
       isRandom: true
     };
 
@@ -174,7 +177,7 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-sky-100 to-sky-200 relative overflow-hidden">
-      {/* Background decorative elements */}
+      {/* عناصر الخلفية الزخرفية */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-4 -left-4 w-96 h-96 bg-sky-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         <div className="absolute -bottom-8 -right-4 w-96 h-96 bg-sky-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
@@ -182,17 +185,17 @@ const DashboardPage = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8 relative z-10">
-        {/* Header */}
+        {/* الرأس */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center space-x-reverse space-x-4">
             <div className="w-16 h-16 bg-gradient-to-br from-sky-600 to-sky-800 rounded-full flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-2xl">🕌</span>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-black drop-shadow-sm">
+              <h1 className="text-3xl font-bold text-black drop-shadow-sm text-outlined">
                 أهلاً {user?.username || 'بك'}
               </h1>
-              <p className="text-black/80 drop-shadow-sm">
+              <p className="text-black/80 drop-shadow-sm text-outlined">
                 المذهب: {user?.religion}
               </p>
             </div>
@@ -203,7 +206,7 @@ const DashboardPage = () => {
               onClick={() => setIsSettingsOpen(true)}
               variant="outline"
               size="lg"
-              className="bg-white/80 backdrop-blur-sm border-2 border-sky-300 hover:bg-sky-50 transform hover:scale-105 transition-all duration-200 text-black"
+              className="bg-white/80 backdrop-blur-sm border-2 border-sky-300 hover:bg-sky-50 transform hover:scale-105 transition-all duration-200 text-black text-outlined"
             >
               <Settings className="h-5 w-5 ml-2" />
               <span className="drop-shadow-sm">الإعدادات</span>
@@ -213,7 +216,7 @@ const DashboardPage = () => {
               onClick={handleLogout}
               variant="outline"
               size="lg"
-              className="bg-red-50/80 backdrop-blur-sm border-2 border-red-300 hover:bg-red-100 transform hover:scale-105 transition-all duration-200 text-red-700"
+              className="bg-red-50/80 backdrop-blur-sm border-2 border-red-300 hover:bg-red-100 transform hover:scale-105 transition-all duration-200 text-red-700 text-outlined"
             >
               <LogOut className="h-5 w-5 ml-2" />
               <span className="drop-shadow-sm">خروج</span>
@@ -222,12 +225,12 @@ const DashboardPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Main Actions */}
+          {/* الإجراءات الرئيسية */}
           <div className="space-y-6">
-            {/* Quick Actions */}
+            {/* الإجراءات السريعة */}
             <Card className="shadow-2xl bg-white/90 backdrop-blur-sm border-2 border-sky-200">
               <CardHeader>
-                <CardTitle className="text-black flex items-center drop-shadow-sm">
+                <CardTitle className="text-black flex items-center drop-shadow-sm text-outlined">
                   <Gamepad2 className="h-6 w-6 ml-3" />
                   إجراءات سريعة
                 </CardTitle>
@@ -236,7 +239,7 @@ const DashboardPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
                   <Button
                     onClick={() => navigate('/random-debates')}
-                    className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 transform hover:scale-105 transition-all duration-200 shadow-lg text-outlined"
                   >
                     <Users className="h-5 w-5 ml-2" />
                     المناظرات العشوائية
@@ -246,14 +249,14 @@ const DashboardPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button
                     onClick={createRandomDebate}
-                    className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg text-outlined"
                   >
                     إنشاء عشوائية
                   </Button>
                   
                   <Button
                     onClick={createPrivateDebate}
-                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg text-outlined"
                   >
                     إنشاء خاصة
                   </Button>
@@ -261,17 +264,17 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
 
-            {/* Join Debate */}
+            {/* الانضمام للمناظرة */}
             <Card className="shadow-2xl bg-white/90 backdrop-blur-sm border-2 border-sky-200">
               <CardHeader>
-                <CardTitle className="text-black flex items-center drop-shadow-sm">
+                <CardTitle className="text-black flex items-center drop-shadow-sm text-outlined">
                   <UserCheck className="h-6 w-6 ml-3" />
                   الانضمام لمناظرة
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="join-code" className="text-black font-semibold drop-shadow-sm">
+                  <Label htmlFor="join-code" className="text-black font-semibold drop-shadow-sm text-outlined">
                     كود المناظرة
                   </Label>
                   <Input
@@ -279,13 +282,13 @@ const DashboardPage = () => {
                     placeholder="أدخل كود المناظرة"
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    className="border-2 border-sky-300 focus:border-sky-500 text-center font-mono text-lg text-black"
+                    className="border-2 border-sky-300 focus:border-sky-500 text-center font-mono text-lg text-black text-outlined"
                     onKeyPress={(e) => e.key === 'Enter' && joinDebate()}
                   />
                 </div>
                 <Button
                   onClick={joinDebate}
-                  className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                  className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3 transform hover:scale-105 transition-all duration-200 shadow-lg text-outlined"
                 >
                   <MessageCircle className="h-5 w-5 ml-2" />
                   انضم للمناظرة
@@ -294,47 +297,47 @@ const DashboardPage = () => {
             </Card>
           </div>
 
-          {/* Settings Panel */}
+          {/* لوحة الإعدادات */}
           <Card className="shadow-2xl bg-white/90 backdrop-blur-sm border-2 border-sky-200">
             <CardHeader>
-              <CardTitle className="text-black drop-shadow-sm">
+              <CardTitle className="text-black drop-shadow-sm text-outlined">
                 إعدادات المناظرة
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Preparation Time */}
+              {/* وقت التحضير */}
               <div className="space-y-3">
-                <Label className="text-black font-semibold drop-shadow-sm">
-                  وقت التحضير: {preparationTime} دقائق
+                <Label className="text-black font-semibold drop-shadow-sm text-outlined">
+                  وقت التحضير: {preparationTime} دقيقة
                 </Label>
                 <Slider
                   value={[preparationTime]}
                   onValueChange={(value) => setPreparationTime(value[0])}
-                  max={15}
+                  max={60}
                   min={1}
                   step={1}
                   className="w-full"
                 />
               </div>
 
-              {/* Round Time */}
+              {/* مدة الجولة */}
               <div className="space-y-3">
-                <Label className="text-black font-semibold drop-shadow-sm">
-                  مدة الجولة: {roundTime} دقائق
+                <Label className="text-black font-semibold drop-shadow-sm text-outlined">
+                  مدة الجولة: {roundTime} دقيقة
                 </Label>
                 <Slider
                   value={[roundTime]}
                   onValueChange={(value) => setRoundTime(value[0])}
-                  max={10}
+                  max={60}
                   min={1}
                   step={1}
                   className="w-full"
                 />
               </div>
 
-              {/* Round Count */}
+              {/* عدد الجولات */}
               <div className="space-y-3">
-                <Label className="text-black font-semibold drop-shadow-sm">
+                <Label className="text-black font-semibold drop-shadow-sm text-outlined">
                   عدد الجولات: {roundCount}
                 </Label>
                 <Slider
@@ -347,30 +350,42 @@ const DashboardPage = () => {
                 />
               </div>
 
-              {/* Final Time */}
+              {/* وقت النهاية */}
               <div className="space-y-3">
-                <Label className="text-black font-semibold drop-shadow-sm">
-                  وقت الختام: {finalTime} دقائق
+                <Label className="text-black font-semibold drop-shadow-sm text-outlined">
+                  وقت النهاية: {finalTime} دقيقة
                 </Label>
                 <Slider
                   value={[finalTime]}
                   onValueChange={(value) => setFinalTime(value[0])}
-                  max={15}
+                  max={60}
                   min={1}
                   step={1}
                   className="w-full"
                 />
               </div>
 
-              {/* Auto Mic */}
+              {/* الميكروفون التلقائي */}
               <div className="flex items-center justify-between">
-                <Label htmlFor="auto-mic" className="text-black font-semibold drop-shadow-sm">
+                <Label htmlFor="auto-mic" className="text-black font-semibold drop-shadow-sm text-outlined">
                   تحكم تلقائي بالميكروفون
                 </Label>
                 <Switch
                   id="auto-mic"
                   checked={autoMic}
                   onCheckedChange={setAutoMic}
+                />
+              </div>
+
+              {/* الكاميرا الاختيارية */}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="camera-optional" className="text-black font-semibold drop-shadow-sm text-outlined">
+                  الكاميرا اختيارية
+                </Label>
+                <Switch
+                  id="camera-optional"
+                  checked={cameraOptional}
+                  onCheckedChange={setCameraOptional}
                 />
               </div>
             </CardContent>
